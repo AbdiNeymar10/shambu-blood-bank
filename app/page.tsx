@@ -1,22 +1,13 @@
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Container } from "@/components/shared/container";
-import { Section } from "@/components/shared/section";
-import { siteConfig } from "@/lib/site";
+import { Container, Section } from "@/components/shared";
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui";
+import { siteConfig } from "@/config";
 
 export default function HomePage() {
   return (
     <Section density="hero" className="bg-muted/40">
       <Container>
         <div className="mx-auto max-w-2xl text-center">
-          <Badge variant="accent" className="mb-4">
+          <Badge variant="soft" className="mb-4">
             Foundation ready
           </Badge>
           <h1 className="font-display text-4xl tracking-tight text-foreground sm:text-5xl">
@@ -33,7 +24,7 @@ export default function HomePage() {
             <Button size="lg" variant="outline">
               Request blood
             </Button>
-            <Button size="lg" variant="urgent">
+            <Button size="lg" variant="destructive">
               Urgent need
             </Button>
           </div>
@@ -59,7 +50,7 @@ export default function HomePage() {
               <Badge>Default</Badge>
               <Badge variant="secondary">Secondary</Badge>
               <Badge variant="outline">Outline</Badge>
-              <Badge variant="urgent">Urgent</Badge>
+              <Badge variant="destructive">Urgent</Badge>
             </CardContent>
           </Card>
         </div>

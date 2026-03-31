@@ -1,2 +1,2 @@
-export { Container } from "./container";
-export { Section } from "./section";
+export { Container, type ContainerProps } from "./container";
+export { Section, type SectionDensity, type SectionProps } from "./section";

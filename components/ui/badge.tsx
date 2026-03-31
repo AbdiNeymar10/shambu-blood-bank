@@ -1,5 +1,5 @@
+import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
@@ -12,9 +12,9 @@ const badgeVariants = cva(
         secondary:
           "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
         outline: "text-foreground",
-        accent:
-          "border-transparent bg-accent-crimson/15 text-accent-crimson-foreground",
-        urgent:
+        /** Soft crimson — brand accent, not the same as `accent` surface token. */
+        soft: "border-transparent bg-accent-crimson/15 text-accent-crimson-foreground",
+        destructive:
           "border-transparent bg-destructive text-destructive-foreground shadow",
       },
     },
@@ -25,13 +25,18 @@ const badgeVariants = cva(
 );
 
 export interface BadgeProps
-  extends HTMLAttributes<HTMLDivElement>,
+  extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof badgeVariants> {}
 
-function Badge({ className, variant, ...props }: BadgeProps) {
-  return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
-  );
-}
+const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
+  ({ className, variant, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(badgeVariants({ variant }), className)}
+      {...props}
+    />
+  )
+);
+Badge.displayName = "Badge";
 
 export { Badge, badgeVariants };

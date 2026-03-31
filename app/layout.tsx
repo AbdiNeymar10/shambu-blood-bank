@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Fraunces } from "next/font/google";
-import "./globals.css";
-import { MainShell } from "@/components/layout/main-shell";
-import { AppProviders } from "@/components/providers/app-providers";
+import { AppShell } from "@/components/layout";
+import { AppProviders } from "@/components/providers";
+import { themeColor } from "@/config";
 import { defaultMetadata } from "@/lib/metadata";
+import "./globals.css";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -21,8 +22,8 @@ export const metadata: Metadata = defaultMetadata;
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
-    { media: "(prefers-color-scheme: dark)", color: "#1a1a1f" },
+    { media: "(prefers-color-scheme: light)", color: themeColor.light },
+    { media: "(prefers-color-scheme: dark)", color: themeColor.dark },
   ],
   width: "device-width",
   initialScale: 1,
@@ -37,7 +38,7 @@ export default function RootLayout({
     <html lang="en" className={`${dmSans.variable} ${fraunces.variable} h-full`}>
       <body className="min-h-full">
         <AppProviders>
-          <MainShell>{children}</MainShell>
+          <AppShell>{children}</AppShell>
         </AppProviders>
       </body>
     </html>

@@ -1,10 +1,5 @@
-import type { HTMLAttributes } from "react";
+import * as React from "react";
 import { cn } from "@/lib/utils";
-
-type SectionProps = HTMLAttributes<HTMLElement> & {
-  /** Vertical rhythm — default matches design system section spacing. */
-  density?: "default" | "compact" | "hero";
-};
 
 const densityMap = {
   default: "py-16 md:py-24",
@@ -12,15 +7,20 @@ const densityMap = {
   hero: "py-20 md:py-32",
 } as const;
 
-export function Section({
-  className,
-  density = "default",
-  ...props
-}: SectionProps) {
-  return (
+export type SectionDensity = keyof typeof densityMap;
+
+export type SectionProps = React.HTMLAttributes<HTMLSectionElement> & {
+  /** Vertical rhythm — matches design system section spacing. */
+  density?: SectionDensity;
+};
+
+export const Section = React.forwardRef<HTMLSectionElement, SectionProps>(
+  ({ className, density = "default", ...props }, ref) => (
     <section
+      ref={ref}
       className={cn(densityMap[density], className)}
       {...props}
     />
-  );
-}
+  )
+);
+Section.displayName = "Section";

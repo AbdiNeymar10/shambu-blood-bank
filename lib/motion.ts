@@ -1,6 +1,9 @@
 import type { Transition } from "framer-motion";
 
-/** Default easing — smooth, professional (Material-style standard). */
+/**
+ * Default easing — smooth, professional (Material-style standard).
+ * Keep cubic-bezier in sync with `var(--ease-standard)` in `app/globals.css`.
+ */
 export const easeStandard = [0.4, 0, 0.2, 1] as const;
 
 export const transitions = {

@@ -2,7 +2,12 @@
 
 /**
  * Shambu Blood Bank — design tokens
- * Deep blood red + white + soft crimson + slate neutrals
+ * Palette: deep blood red, white, soft crimson, slate neutrals.
+ *
+ * Layers:
+ * 1. :root / .dark — semantic CSS variables (source of truth for color + radius).
+ * 2. @theme inline — maps variables into Tailwind theme.
+ * 3. @layer base / utilities — global typography and helpers.
  */
 
 :root {
@@ -21,16 +26,20 @@
   --muted-foreground: oklch(0.46 0.02 260);
   --accent: oklch(0.96 0.025 15);
   --accent-foreground: oklch(0.26 0.04 15);
-  /* Urgent / critical CTA */
+  /* Urgent / critical */
   --destructive: oklch(0.5 0.22 25);
   --destructive-foreground: oklch(0.99 0.01 25);
   --border: oklch(0.91 0.01 260);
   --input: oklch(0.91 0.01 260);
   --ring: oklch(0.34 0.13 15);
-  /* Soft crimson / pink accent */
+  /* Soft crimson / pink — distinct from `accent` surface */
   --accent-crimson: oklch(0.72 0.14 12);
   --accent-crimson-foreground: oklch(0.32 0.12 15);
   --radius: 0.625rem;
+  /* Typography stacks — Next.js fonts set --font-dm-sans / --font-fraunces on <html> */
+  --font-heading: var(--font-fraunces), ui-serif, Georgia, serif;
+  /* Motion — keep in sync with lib/motion.ts easeStandard */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dark {
@@ -107,11 +116,10 @@
   h2,
   h3,
   h4 {
-    font-family: var(--font-fraunces), ui-serif, Georgia, serif;
+    font-family: var(--font-heading);
     @apply font-semibold tracking-tight text-foreground;
   }
 
-  /* Smooth defaults for interactive surfaces (not global * to avoid layout jank) */
   :where(
       a,
       button,
@@ -124,12 +132,12 @@
     transition-property: color, background-color, border-color, box-shadow,
       opacity, transform;
     transition-duration: 200ms;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-timing-function: var(--ease-standard);
   }
 }
 
 @layer utilities {
   .font-display {
-    font-family: var(--font-fraunces), ui-serif, Georgia, serif;
+    font-family: var(--font-heading);
   }
 }
