@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Footer, Navbar } from "@/components/shared";
 import { cn } from "@/lib/utils";
 
 type AppShellProps = {
@@ -18,7 +19,9 @@ export function AppShell({ children, className }: AppShellProps) {
         className
       )}
     >
+      <Navbar />
       <main className="flex flex-1 flex-col">{children}</main>
+      <Footer />
     </div>
   );
 }
