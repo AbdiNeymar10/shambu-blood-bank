@@ -9,12 +9,12 @@ const densityMap = {
 
 export type SectionDensity = keyof typeof densityMap;
 
-export type SectionProps = React.HTMLAttributes<HTMLSectionElement> & {
+export type SectionProps = React.HTMLAttributes<HTMLElement> & {
   /** Vertical rhythm — matches design system section spacing. */
   density?: SectionDensity;
 };
 
-export const Section = React.forwardRef<HTMLSectionElement, SectionProps>(
+export const Section = React.forwardRef<HTMLElement, SectionProps>(
   ({ className, density = "default", ...props }, ref) => (
     <section
       ref={ref}

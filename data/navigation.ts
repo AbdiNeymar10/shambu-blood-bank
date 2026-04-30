@@ -17,7 +17,7 @@ export const NAV_LINKS: readonly NavLink[] = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About" },
   { href: "/donate", label: "Donate" },
-  { href: "/request-blood", label: "Request Blood" },
+  { href: "/request", label: "Request Blood" },
   { href: "/availability", label: "Availability" },
   { href: "/campaigns", label: "Campaigns" },
   { href: "/blog", label: "Blog" },
@@ -26,7 +26,7 @@ export const NAV_LINKS: readonly NavLink[] = [
 
 export const NAVBAR_CTA = {
   donor: { href: "/donate", label: "Become a Donor" },
-  emergency: { href: "/request-blood?priority=emergency", label: "Emergency Request" },
+  emergency: { href: "/request?priority=emergency", label: "Emergency Request" },
 } as const;
 
 export const FOOTER_LINK_GROUPS: readonly FooterLinkGroup[] = [
