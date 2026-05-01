@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Fraunces } from "next/font/google";
-import { AppShell } from "@/components/layout";
 import { AppProviders } from "@/components/providers";
 import { themeColor } from "@/config";
 import { defaultMetadata } from "@/lib/metadata";
@@ -36,9 +35,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${dmSans.variable} ${fraunces.variable} h-full`}>
-      <body className="min-h-full">
+      <body className="min-h-full bg-background text-foreground">
         <AppProviders>
-          <AppShell>{children}</AppShell>
+          {children}
         </AppProviders>
       </body>
     </html>
