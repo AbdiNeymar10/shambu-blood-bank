@@ -13,7 +13,7 @@ export default function DonatePage() {
         {/* Background blobs */}
         <div className="absolute top-1/4 left-10 w-72 h-72 bg-accent-crimson/20 rounded-full blur-3xl mix-blend-multiply" />
         <div className="absolute top-1/3 right-10 w-96 h-96 bg-primary/20 rounded-full blur-3xl mix-blend-multiply" />
-        
+
         <div className="container px-4 md:px-6 text-center relative z-10">
           <h1 className="text-4xl md:text-6xl font-display font-bold tracking-tight mb-6">
             Give the Gift of <span className="text-primary">Life</span>
