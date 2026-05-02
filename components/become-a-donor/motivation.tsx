@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Quote } from "lucide-react";
+import Image from "next/image";
 
 export function Motivation() {
   return (
@@ -31,8 +32,8 @@ export function Motivation() {
                 "I started donating in college just to help out. Ten years later, getting the notification that my donation saved a little girl's life made it the most fulfilling thing I've ever done."
               </blockquote>
               <div className="flex items-center gap-4 px-4">
-                <div className="w-12 h-12 rounded-full bg-primary overflow-hidden">
-                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop" alt="Donor" className="w-full h-full object-cover" />
+                <div className="w-12 h-12 rounded-full bg-primary overflow-hidden relative">
+                  <Image src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop" alt="Donor" fill className="object-cover" />
                 </div>
                 <div>
                   <div className="font-bold">David Miller</div>
@@ -50,8 +51,8 @@ export function Motivation() {
             className="grid grid-cols-2 gap-4"
           >
             <div className="space-y-4">
-              <div className="aspect-[4/5] rounded-2xl overflow-hidden shadow-lg">
-                <img src="https://images.unsplash.com/photo-1529390079861-591de354faf5?q=80&w=800&auto=format&fit=crop" alt="Happy donor" className="w-full h-full object-cover" />
+              <div className="aspect-[4/5] rounded-2xl overflow-hidden shadow-lg relative">
+                <Image src="https://images.unsplash.com/photo-1529390079861-591de354faf5?q=80&w=800&auto=format&fit=crop" alt="Happy donor" fill className="object-cover" />
               </div>
               <div className="aspect-square rounded-2xl overflow-hidden shadow-lg bg-primary text-primary-foreground p-6 flex flex-col justify-center">
                 <div className="text-4xl font-display font-bold mb-2">1 in 3</div>
@@ -63,8 +64,8 @@ export function Motivation() {
                 <div className="text-4xl font-display font-bold mb-2">Every 2s</div>
                 <div className="text-sm opacity-90">someone in our country needs a blood transfusion.</div>
               </div>
-              <div className="aspect-[4/5] rounded-2xl overflow-hidden shadow-lg">
-                <img src="https://images.unsplash.com/photo-1579684385127-1ef15d508118?q=80&w=800&auto=format&fit=crop" alt="Medical staff" className="w-full h-full object-cover" />
+              <div className="aspect-[4/5] rounded-2xl overflow-hidden shadow-lg relative">
+                <Image src="https://images.unsplash.com/photo-1579684385127-1ef15d508118?q=80&w=800&auto=format&fit=crop" alt="Medical staff" fill className="object-cover" />
               </div>
             </div>
           </motion.div>

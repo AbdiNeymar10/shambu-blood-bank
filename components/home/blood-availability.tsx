@@ -3,6 +3,8 @@
 import { motion } from "framer-motion";
 import { Droplet, AlertTriangle, CheckCircle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Container, SectionHeader } from "@/components/shared";
+import { staggerContainerFast, fadeInUp, viewportOnce } from "@/lib/motion";
 
 type BloodStatus = "Available" | "Low" | "Critical";
 
@@ -31,75 +33,69 @@ const statusConfig = {
 
 export function BloodAvailability() {
   return (
-    <section className="py-24 bg-muted/30">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-red-500/10 text-red-600 font-medium text-sm mb-6"
-          >
-            <Droplet size={16} className="mr-2" />
-            Live Inventory
-          </motion.div>
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-4"
-          >
-            Real-Time Blood Availability
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="text-lg text-muted-foreground"
-          >
-            Check our current stock levels. If your blood type is marked as Low or Critical, your donation is urgently needed today.
-          </motion.p>
-        </div>
+    <section className="section-padding bg-muted/30">
+      <Container>
+        <SectionHeader
+          align="center"
+          eyebrow="Live Inventory"
+          eyebrowIcon={<Droplet size={16} />}
+          eyebrowColor="red"
+          title="Real-Time Blood Availability"
+          description="Check our current stock levels. If your blood type is marked as Low or Critical, your donation is urgently needed today."
+        />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {bloodInventory.map((item, index) => {
+        <motion.div
+          variants={staggerContainerFast}
+          initial="hidden"
+          whileInView="visible"
+          viewport={viewportOnce}
+          className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6"
+        >
+          {bloodInventory.map((item) => {
             const config = statusConfig[item.status];
             const StatusIcon = config.icon;
 
             return (
               <motion.div
                 key={item.type}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.05 }}
+                variants={fadeInUp}
                 className={cn(
-                  "relative overflow-hidden rounded-3xl p-6 border bg-card transition-all duration-300 hover:shadow-lg",
+                  "relative overflow-hidden rounded-2xl p-5 md:p-6 border bg-card transition-all duration-300 hover:shadow-lg",
                   "hover:-translate-y-1",
                   config.border
                 )}
               >
-                <div className="flex justify-between items-start mb-6">
-                  <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 text-white font-bold text-2xl shadow-lg shadow-red-500/30">
+                <div className="flex justify-between items-start mb-5 md:mb-6">
+                  <div className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-red-500 to-red-600 text-white font-bold text-lg md:text-xl shadow-lg shadow-red-500/25">
                     {item.type}
                   </div>
-                  <div className={cn("px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5", config.bg, config.color)}>
-                    <StatusIcon size={14} />
+                  <div className={cn(
+                    "px-2.5 py-1 rounded-full text-[10px] md:text-xs font-semibold flex items-center gap-1",
+                    config.bg,
+                    config.color,
+                    item.status === "Critical" && "animate-[pulse-subtle_2s_ease-in-out_infinite]"
+                  )}>
+                    <StatusIcon size={12} />
                     {item.status}
                   </div>
                 </div>
                 
                 <div>
                   <div className="flex justify-between items-end mb-2">
-                    <span className="text-sm text-muted-foreground font-medium">Stock Level</span>
-                    <span className="text-2xl font-bold">{item.stock}<span className="text-sm text-muted-foreground font-normal ml-1">units</span></span>
+                    <span className="text-xs text-muted-foreground font-medium">Stock Level</span>
+                    <span className="text-xl md:text-2xl font-bold">{item.stock}<span className="text-xs text-muted-foreground font-normal ml-1">units</span></span>
                   </div>
-                  <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="w-full h-1.5 md:h-2 rounded-full bg-muted overflow-hidden"
+                    role="progressbar"
+                    aria-valuenow={item.stock}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`${item.type} stock level: ${item.stock} units, ${item.status}`}
+                  >
                     <motion.div 
                       initial={{ width: 0 }}
-                      whileInView={{ width: `${Math.min((item.stock / 100) * 100, 100)}%` }}
+                      whileInView={{ width: `${Math.min(item.stock, 100)}%` }}
                       viewport={{ once: true }}
                       transition={{ duration: 1, ease: "easeOut" }}
                       className={cn("h-full rounded-full", item.status === "Available" ? "bg-emerald-500" : item.status === "Low" ? "bg-amber-500" : "bg-red-500")}
@@ -108,13 +104,13 @@ export function BloodAvailability() {
                 </div>
                 
                 {item.status === "Critical" && (
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/10 rounded-bl-[100px] -z-10" />
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-red-500/8 rounded-bl-[80px] pointer-events-none" />
                 )}
               </motion.div>
             );
           })}
-        </div>
-      </div>
+        </motion.div>
+      </Container>
     </section>
   );
 }

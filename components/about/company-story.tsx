@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Heart, Shield, Users, Target } from "lucide-react";
+import Image from "next/image";
 
 const stats = [
   { label: "Donors Registered", value: "50,000+" },
@@ -81,10 +82,12 @@ export function CompanyStory() {
             className="relative"
           >
             <div className="aspect-square md:aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl relative">
-              <img 
+              <Image 
                 src="https://images.unsplash.com/photo-1615461066841-6116e61058f4?q=80&w=2000&auto=format&fit=crop" 
                 alt="Medical professionals analyzing blood samples" 
-                className="object-cover w-full h-full"
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 50vw"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
               <div className="absolute bottom-6 left-6 right-6">
