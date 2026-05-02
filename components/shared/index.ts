@@ -11,6 +11,7 @@ export {
   type SectionShellProps,
 } from "./section-shell";
 export { SectionHeader, type SectionHeaderProps } from "./section-header";
+export { PageHero, type PageHeroProps } from "./page-hero";
 export { SecondaryButton, type SecondaryButtonProps } from "./secondary-button";
 export { StatCard, type StatCardProps } from "./stat-card";
 export { FeatureCard, type FeatureCardProps } from "./feature-card";

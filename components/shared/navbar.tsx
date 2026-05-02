@@ -38,12 +38,15 @@ export function Navbar({
     setMenuOpen(false);
   }, [pathname]);
 
+  const isActive = (href: string) =>
+    pathname === href || (href !== "/" && pathname?.startsWith(href));
+
   return (
     <header
       className={cn(
         "sticky top-0 z-50 border-b border-transparent transition-all duration-300",
         scrolled &&
-          "border-border/60 bg-background/65 shadow-[0_8px_24px_-16px_rgba(0,0,0,0.4)] backdrop-blur-xl",
+          "border-border/60 bg-background/70 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.15)] backdrop-blur-xl",
         className
       )}
     >
@@ -57,19 +60,25 @@ export function Navbar({
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-6 lg:flex">
+        <nav className="hidden items-center gap-1 lg:flex">
           {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
-                "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground",
-                (pathname === link.href ||
-                  (link.href !== "/" && pathname?.startsWith(link.href))) &&
-                  "text-foreground"
+                "relative px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground rounded-md",
+                isActive(link.href) && "text-foreground"
               )}
             >
               {link.label}
+              {isActive(link.href) && (
+                <motion.div
+                  layoutId="nav-active-indicator"
+                  className="absolute bottom-0 left-3 right-3 h-[2px] bg-primary rounded-full"
+                  initial={false}
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
             </Link>
           ))}
         </nav>
@@ -99,23 +108,21 @@ export function Navbar({
       <AnimatePresence>
         {menuOpen ? (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-            className="border-t border-border/60 bg-background/90 backdrop-blur-xl lg:hidden"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            className="border-t border-border/60 bg-background/95 backdrop-blur-xl lg:hidden overflow-hidden"
           >
             <Container className="space-y-5 py-5">
-              <nav className="grid gap-3">
+              <nav className="grid gap-1.5">
                 {links.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
                     className={cn(
-                      "rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                      (pathname === link.href ||
-                        (link.href !== "/" && pathname?.startsWith(link.href))) &&
-                        "bg-muted text-foreground"
+                      "rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                      isActive(link.href) && "bg-primary/5 text-foreground border-l-2 border-primary"
                     )}
                   >
                     {link.label}

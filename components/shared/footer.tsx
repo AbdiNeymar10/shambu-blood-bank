@@ -42,12 +42,12 @@ export function Footer({
   return (
     <footer className={cn("mt-auto border-t border-border/60 bg-card/40", className)}>
       <Container className="py-12 sm:py-16">
-        <div className="grid gap-10 lg:grid-cols-[1.2fr_1fr_1fr_1fr]">
-          <div className="space-y-4">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.2fr_1fr_1fr_1fr]">
+          <div className="space-y-4 sm:col-span-2 lg:col-span-1">
             <p className="font-display text-2xl font-semibold tracking-tight">
               {brandLabel}
             </p>
-            <p className="max-w-sm text-sm text-muted-foreground">
+            <p className="max-w-sm text-sm text-muted-foreground leading-relaxed">
               {brandDescription}
             </p>
             <StatusPill status="active">24/7 Emergency Line Active</StatusPill>
@@ -79,23 +79,23 @@ export function Footer({
             </h4>
             <ul className="space-y-2 text-sm">
               <li className="inline-flex items-start gap-2 text-muted-foreground">
-                <Mail className="mt-0.5 size-4" />
+                <Mail className="mt-0.5 size-4 shrink-0" />
                 {CONTACT_INFO.email}
               </li>
               <li className="inline-flex items-start gap-2 text-muted-foreground">
-                <Phone className="mt-0.5 size-4" />
+                <Phone className="mt-0.5 size-4 shrink-0" />
                 {CONTACT_INFO.phone}
               </li>
               <li className="inline-flex items-start gap-2 text-muted-foreground">
-                <ShieldPlus className="mt-0.5 size-4 text-destructive" />
+                <ShieldPlus className="mt-0.5 size-4 shrink-0 text-destructive" />
                 Emergency: {CONTACT_INFO.emergency}
               </li>
               <li className="inline-flex items-start gap-2 text-muted-foreground">
-                <Clock3 className="mt-0.5 size-4" />
+                <Clock3 className="mt-0.5 size-4 shrink-0" />
                 {CONTACT_INFO.officeHours}
               </li>
               <li className="inline-flex items-start gap-2 text-muted-foreground">
-                <MapPin className="mt-0.5 size-4" />
+                <MapPin className="mt-0.5 size-4 shrink-0" />
                 {CONTACT_INFO.address}
               </li>
             </ul>
@@ -109,12 +109,11 @@ export function Footer({
           <div className="flex items-center gap-3">
             {socialLinks.map((social) => {
               const SocialIcon = socialIconMap[social.label] ?? Twitter;
-
               return (
                 <Link
                   key={social.href}
                   href={social.href}
-                  className="inline-flex size-8 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition-colors hover:text-primary"
+                  className="inline-flex size-8 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition-all hover:text-primary hover:scale-110 hover:border-primary/30"
                   target="_blank"
                   rel="noreferrer"
                   aria-label={social.label}
