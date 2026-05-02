@@ -1,4 +1,5 @@
 import { ContactInfo, ContactForm, MapPlaceholder } from "@/components/contact";
+import { PageHero } from "@/components/shared";
 
 export const metadata = {
   title: "Contact Us | Shambu Blood Bank",
@@ -8,18 +9,15 @@ export const metadata = {
 export default function ContactPage() {
   return (
     <div className="flex flex-col min-h-screen">
-      <section className="pt-32 pb-16 bg-muted/30">
-        <div className="container px-4 md:px-6">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight mb-4">
-              Contact <span className="text-primary">Us</span>
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Whether you're looking to donate, request blood, or just have a question, our team is ready to assist you.
-            </p>
-          </div>
+      <PageHero
+        title="Contact Us"
+        highlight="Us"
+        description="Whether you're looking to donate, request blood, or just have a question, our team is ready to assist you."
+      />
 
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-start">
+      <section className="section-padding">
+        <div className="container px-4 md:px-6">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-start">
             <ContactInfo />
             <ContactForm />
           </div>
