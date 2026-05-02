@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Float, Points, PointMaterial } from "@react-three/drei";
 import * as THREE from "three";
@@ -8,10 +8,9 @@ import * as THREE from "three";
 function Particles() {
   const ref = useRef<THREE.Points>(null);
   
-  // Create particles
   const particles = useMemo(() => {
-    const arr = new Float32Array(500 * 3);
-    for (let i = 0; i < 500; i++) {
+    const arr = new Float32Array(300 * 3);
+    for (let i = 0; i < 300; i++) {
       arr[i * 3] = (Math.random() - 0.5) * 15;
       arr[i * 3 + 1] = (Math.random() - 0.5) * 15;
       arr[i * 3 + 2] = (Math.random() - 0.5) * 15;
@@ -53,15 +52,14 @@ function BloodDrop({ position, scale, color, speed = 2 }: { position: [number, n
   return (
     <Float speed={speed} rotationIntensity={1.5} floatIntensity={2} position={position}>
       <mesh ref={meshRef} scale={scale}>
-        {/* An elongated sphere representing an abstract blood drop */}
-        <sphereGeometry args={[1, 64, 64]} />
+        <sphereGeometry args={[1, 32, 32]} />
         <meshStandardMaterial 
           color={color} 
           roughness={0.2}
           metalness={0.1}
           envMapIntensity={1}
           emissive={color}
-          emissiveIntensity={0.2}
+          emissiveIntensity={0.15}
         />
       </mesh>
     </Float>
@@ -70,7 +68,6 @@ function BloodDrop({ position, scale, color, speed = 2 }: { position: [number, n
 
 function Scene() {
   useFrame((state) => {
-    // Subtle mouse responsive camera movement
     state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, (state.pointer.x * Math.PI) / 8, 0.05);
     state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, (state.pointer.y * Math.PI) / 8, 0.05);
     state.camera.lookAt(0, 0, 0);
@@ -87,18 +84,31 @@ function Scene() {
       <BloodDrop position={[-3, 1, -2]} scale={0.8} color="#ef4444" speed={1.5} />
       <BloodDrop position={[4, -1, -3]} scale={1.2} color="#dc2626" speed={2} />
       <BloodDrop position={[2, 3, -5]} scale={0.6} color="#b91c1c" speed={1.8} />
-      <BloodDrop position={[-4, -2, -4]} scale={1.5} color="#991b1b" speed={1.2} />
-      <BloodDrop position={[0, -4, -6]} scale={1.0} color="#7f1d1d" speed={2.5} />
     </>
+  );
+}
+
+/** Fallback shown while Three.js loads. */
+function HeroFallback() {
+  return (
+    <div className="absolute inset-0 z-0 pointer-events-none">
+      <div className="absolute inset-0 bg-gradient-to-b from-red-500/5 via-transparent to-transparent" />
+    </div>
   );
 }
 
 export function HeroScene() {
   return (
     <div className="absolute inset-0 z-0 pointer-events-none">
-      <Canvas camera={{ position: [0, 0, 10], fov: 45 }}>
-        <Scene />
-      </Canvas>
+      <Suspense fallback={<HeroFallback />}>
+        <Canvas
+          camera={{ position: [0, 0, 10], fov: 45 }}
+          dpr={[1, 1.5]}
+          gl={{ antialias: false, powerPreference: "high-performance" }}
+        >
+          <Scene />
+        </Canvas>
+      </Suspense>
       {/* Overlay gradient to blend scene with the background smoothly */}
       <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/60 to-background z-10" />
       {/* Vignette effect */}
