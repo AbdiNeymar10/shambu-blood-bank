@@ -1,8 +1,10 @@
 "use client";
 
-import { motion, Variants } from "framer-motion";
+import { motion } from "framer-motion";
 import { ShieldCheck, Zap, Users, Database, CalendarHeart, HandHeart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Container, SectionHeader } from "@/components/shared";
+import { staggerContainer, fadeInUp, viewportOnce } from "@/lib/motion";
 
 const features = [
   {
@@ -50,79 +52,45 @@ const features = [
 ];
 
 export function WhyChooseUs() {
-  const containerVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 },
-    },
-  };
-
-  const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } },
-  };
-
   return (
-    <section className="py-24 bg-background">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-primary/10 text-primary font-medium text-sm mb-6"
-          >
-            Why Choose Us
-          </motion.div>
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-4"
-          >
-            Setting the Standard in Blood Banking
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="text-lg text-muted-foreground"
-          >
-            We combine cutting-edge medical technology with compassionate care to ensure a seamless, safe, and efficient blood supply chain.
-          </motion.p>
-        </div>
+    <section className="section-padding bg-background">
+      <Container>
+        <SectionHeader
+          align="center"
+          eyebrow="Why Choose Us"
+          eyebrowColor="primary"
+          title="Setting the Standard in Blood Banking"
+          description="We combine cutting-edge medical technology with compassionate care to ensure a seamless, safe, and efficient blood supply chain."
+        />
 
         <motion.div
-          variants={containerVariants}
+          variants={staggerContainer}
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+          viewport={viewportOnce}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8"
         >
           {features.map((feature, index) => {
             const Icon = feature.icon;
             return (
               <motion.div
                 key={index}
-                variants={itemVariants}
-                className="group relative p-8 rounded-3xl border border-border/50 bg-card hover:bg-muted/50 transition-colors duration-300 overflow-hidden"
+                variants={fadeInUp}
+                className="group relative p-7 md:p-8 rounded-2xl border border-border/50 bg-card hover:bg-muted/30 transition-all duration-300 overflow-hidden hover:-translate-y-0.5 hover:shadow-lg"
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/5 to-transparent rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:bg-primary/10"></div>
-                <div className={cn("inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-6", feature.bg, feature.color)}>
-                  <Icon size={28} strokeWidth={2} />
+                <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-primary/5 to-transparent rounded-full blur-3xl -mr-14 -mt-14 transition-all group-hover:from-primary/10 pointer-events-none" />
+                <div className={cn("inline-flex items-center justify-center w-12 h-12 rounded-xl mb-5", feature.bg, feature.color)}>
+                  <Icon size={24} strokeWidth={2} />
                 </div>
-                <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
-                <p className="text-muted-foreground leading-relaxed">
+                <h3 className="text-lg font-bold mb-2.5">{feature.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
                   {feature.description}
                 </p>
               </motion.div>
             );
           })}
         </motion.div>
-      </div>
+      </Container>
     </section>
   );
 }
