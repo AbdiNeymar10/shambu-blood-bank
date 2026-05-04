@@ -3,6 +3,7 @@
 import { Bell, Search, Menu, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/shared";
 
 export function DonorHeader() {
   return (
@@ -21,6 +22,7 @@ export function DonorHeader() {
       </div>
       
       <div className="flex items-center gap-3">
+        <ThemeToggle />
         <div className="relative group">
           <Button variant="outline" size="icon" className="rounded-full relative border-border/50">
             <Bell className="w-5 h-5 text-muted-foreground" />
