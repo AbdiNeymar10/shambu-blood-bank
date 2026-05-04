@@ -21,3 +21,4 @@ export {
   type StatusPillProps,
   type StatusPillType,
 } from "./status-pill";
+export { ThemeToggle } from "./theme-toggle";

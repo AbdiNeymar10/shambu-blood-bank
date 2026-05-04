@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { PrimaryButton } from "./primary-button";
 import { SecondaryButton } from "./secondary-button";
 import { Container } from "./container";
+import { ThemeToggle } from "./theme-toggle";
 
 export type NavbarProps = {
   brandLabel?: string;
@@ -84,6 +85,7 @@ export function Navbar({
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
+          <ThemeToggle />
           <SecondaryButton asChild size="sm">
             <Link href={NAVBAR_CTA.donor.href}>{NAVBAR_CTA.donor.label}</Link>
           </SecondaryButton>
@@ -94,15 +96,18 @@ export function Navbar({
           </PrimaryButton>
         </div>
 
-        <button
-          className="inline-flex size-10 items-center justify-center rounded-md border border-border/70 text-foreground lg:hidden"
-          aria-label="Toggle menu"
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((prev) => !prev)}
-          type="button"
-        >
-          {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
-        </button>
+        <div className="flex items-center gap-2 lg:hidden">
+          <ThemeToggle />
+          <button
+            className="inline-flex size-10 items-center justify-center rounded-md border border-border/70 text-foreground"
+            aria-label="Toggle menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((prev) => !prev)}
+            type="button"
+          >
+            {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          </button>
+        </div>
       </Container>
 
       <AnimatePresence>
