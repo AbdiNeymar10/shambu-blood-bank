@@ -11,7 +11,7 @@ export default function DonorLayout({
       <DonorSidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <DonorHeader />
-        <main className="flex-1 overflow-auto p-6 bg-[#fcfcfc]">
+        <main className="flex-1 overflow-auto p-6 bg-secondary/10">
           <div className="max-w-7xl mx-auto space-y-8">
             {children}
           </div>
