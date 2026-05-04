@@ -34,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${fraunces.variable} h-full`}>
+    <html lang="en" className={`${dmSans.variable} ${fraunces.variable} h-full`} suppressHydrationWarning>
       <body className="min-h-full bg-background text-foreground">
         <AppProviders>
           {children}
