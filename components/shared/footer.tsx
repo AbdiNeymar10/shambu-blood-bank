@@ -24,6 +24,8 @@ const socialIconMap: Record<string, React.ComponentType<{ className?: string }>>
   X: Twitter,
 };
 
+import { Logo } from "./logo";
+
 export type FooterProps = {
   className?: string;
   brandLabel?: string;
@@ -44,9 +46,7 @@ export function Footer({
       <Container className="py-12 sm:py-16">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.2fr_1fr_1fr_1fr]">
           <div className="space-y-4 sm:col-span-2 lg:col-span-1">
-            <p className="font-display text-2xl font-semibold tracking-tight">
-              {brandLabel}
-            </p>
+            <Logo variant="stacked" size="lg" href="/" />
             <p className="max-w-sm text-sm text-muted-foreground leading-relaxed">
               {brandDescription}
             </p>
