@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata } from "next/types";
 import { getSiteUrl, siteConfig } from "@/config";
 
 const siteUrl = getSiteUrl();
@@ -44,6 +44,10 @@ export const defaultMetadata: Metadata = {
   },
   alternates: {
     canonical: siteUrl,
+  },
+  icons: {
+    icon: "/icon.svg",
+    apple: "/logo.png",
   },
   category: "health",
 };
