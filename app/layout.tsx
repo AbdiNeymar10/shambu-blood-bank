@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata, Viewport } from "next/types";
 import { DM_Sans, Fraunces } from "next/font/google";
 import { AppProviders } from "@/components/providers";
 import { themeColor } from "@/config";

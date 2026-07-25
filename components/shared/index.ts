@@ -22,3 +22,4 @@ export {
   type StatusPillType,
 } from "./status-pill";
 export { ThemeToggle } from "./theme-toggle";
+export { Logo, LogoIcon, type LogoProps } from "./logo";
