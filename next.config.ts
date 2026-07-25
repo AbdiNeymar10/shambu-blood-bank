@@ -1,4 +1,4 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from "next/types";
 
 const nextConfig: NextConfig = {
   // Ensure ESM packages like framer-motion are transpiled for Next's bundler
