@@ -1,0 +1,17 @@
+<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sbbDropGradient" x1="24" y1="4" x2="24" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FB7185" />
+      <stop offset="40%" stop-color="#E11D48" />
+      <stop offset="100%" stop-color="#9F1239" />
+    </linearGradient>
+    <linearGradient id="sbbHeartGradient" x1="16" y1="18" x2="32" y2="34" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#FFE4E6" />
+    </linearGradient>
+  </defs>
+  <path d="M24 4C24 4 10 20.5 10 31.5C10 38.4036 16.268 44 24 44C31.732 44 38 38.4036 38 31.5C38 20.5 24 4 24 4Z" fill="url(#sbbDropGradient)" />
+  <path d="M24 7.5C24 7.5 14 20 14 30.5C14 33.5 15.5 36.5 18 38.5C16 36.5 15 33.5 15 30.5C15 21 24 9 24 9Z" fill="white" fill-opacity="0.3" />
+  <path d="M24 35.5C24 35.5 15.5 30 15.5 24.5C15.5 22 17.5 20 20 20C21.8 20 23.2 21 24 22.1C24.8 21 26.2 20 28 20C30.5 20 32.5 22 32.5 24.5C32.5 30 24 35.5 24 35.5Z" fill="url(#sbbHeartGradient)" />
+  <path d="M17 25.5H19.5L21 22.5L23.5 28.5L25.5 23.5L27 25.5H29.5" stroke="#E11D48" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

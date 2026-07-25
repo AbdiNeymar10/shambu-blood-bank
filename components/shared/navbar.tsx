@@ -13,6 +13,8 @@ import { SecondaryButton } from "./secondary-button";
 import { Container } from "./container";
 import { ThemeToggle } from "./theme-toggle";
 
+import { Logo } from "./logo";
+
 export type NavbarProps = {
   brandLabel?: string;
   links?: readonly NavLink[];
@@ -52,14 +54,7 @@ export function Navbar({
       )}
     >
       <Container className="flex h-18 items-center justify-between py-3">
-        <Link href="/" className="inline-flex items-center gap-2.5">
-          <span className="inline-flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Heart className="size-4" />
-          </span>
-          <span className="font-display text-lg font-semibold tracking-tight">
-            {brandLabel}
-          </span>
-        </Link>
+        <Logo href="/" size="md" />
 
         <nav className="hidden items-center gap-1 lg:flex">
           {links.map((link) => (
