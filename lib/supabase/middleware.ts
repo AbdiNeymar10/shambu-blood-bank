@@ -43,7 +43,8 @@ export async function updateSession(request: NextRequest) {
   // Define route categories
   const isAdminRoute = pathname.startsWith("/admin") && pathname !== "/admin/login";
   const isAdminLoginRoute = pathname === "/admin/login";
-  const isDashboardRoute = pathname.startsWith("/dashboard");
+  const isDashboardRoute =
+    pathname.startsWith("/dashboard") || pathname.startsWith("/donor");
   const isAuthGuestRoute =
     pathname === "/login" ||
     pathname === "/register" ||
