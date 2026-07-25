@@ -1,8 +1,19 @@
 import { redirect } from "next/navigation";
 import { createClient } from "./server";
+export {
+  getAuthUser,
+  isAdmin,
+  isDonor,
+  hasRole,
+  requireAuth,
+  requireAdmin,
+  requireDonor,
+  requireAnyRole,
+  type AuthUser,
+} from "@/lib/rbac";
 
 /**
- * Gets the current authenticated user on the server.
+ * Gets the current authenticated Supabase auth user on the server.
  */
 export async function getCurrentUser() {
   const supabase = await createClient();
@@ -33,17 +44,4 @@ export async function getSession() {
   }
 
   return session;
-}
-
-/**
- * Requires an authenticated user. Redirects to login page if unauthenticated.
- */
-export async function requireAuth(redirectTo: string = "/login") {
-  const user = await getCurrentUser();
-
-  if (!user) {
-    redirect(redirectTo);
-  }
-
-  return user;
 }
