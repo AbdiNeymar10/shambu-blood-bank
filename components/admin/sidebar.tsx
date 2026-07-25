@@ -17,12 +17,12 @@ import {
 import { cn } from "@/lib/utils";
 
 const sidebarItems = [
-  { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { name: "Donors", href: "/admin/donors", icon: Users },
-  { name: "Blood Inventory", href: "/admin/inventory", icon: Droplet },
-  { name: "Blood Requests", href: "/admin/requests", icon: FileText },
-  { name: "Campaigns", href: "/admin/campaigns", icon: Megaphone },
+  { name: "Blood Inventory", href: "/admin/blood-inventory", icon: Droplet },
+  { name: "Blood Requests", href: "/admin/blood-requests", icon: FileText },
   { name: "Appointments", href: "/admin/appointments", icon: Calendar },
+  { name: "Campaigns", href: "/admin/campaigns", icon: Megaphone },
   { name: "Blog Management", href: "/admin/blog", icon: Newspaper },
   { name: "Notifications", href: "/admin/notifications", icon: Bell },
   { name: "Reports", href: "/admin/reports", icon: BarChart },
@@ -46,7 +46,10 @@ export function Sidebar() {
       <div className="flex-1 overflow-y-auto py-6 px-4">
         <nav className="space-y-1.5">
           {sidebarItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              pathname === item.href ||
+              (item.href !== "/admin/dashboard" && pathname?.startsWith(item.href)) ||
+              (item.href === "/admin/dashboard" && (pathname === "/admin" || pathname === "/admin/dashboard"));
             return (
               <Link
                 key={item.name}
