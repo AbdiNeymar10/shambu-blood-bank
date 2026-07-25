@@ -1,18 +1,19 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Heart, Menu, X } from "lucide-react";
+import { LogOut, Menu, User, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { NavLink } from "@/data";
 import { NAVBAR_CTA, NAV_LINKS } from "@/data";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
+import { logout } from "@/lib/actions/auth";
 import { PrimaryButton } from "./primary-button";
 import { SecondaryButton } from "./secondary-button";
 import { Container } from "./container";
 import { ThemeToggle } from "./theme-toggle";
-
 import { Logo } from "./logo";
 
 export type NavbarProps = {
@@ -29,6 +30,7 @@ export function Navbar({
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [user, setUser] = useState<{ email?: string } | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -40,6 +42,21 @@ export function Navbar({
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/" && pathname?.startsWith(href));
@@ -81,14 +98,31 @@ export function Navbar({
 
         <div className="hidden items-center gap-3 lg:flex">
           <ThemeToggle />
-          <SecondaryButton asChild size="sm">
-            <Link href={NAVBAR_CTA.donor.href}>{NAVBAR_CTA.donor.label}</Link>
-          </SecondaryButton>
-          <PrimaryButton asChild size="sm">
-            <Link href={NAVBAR_CTA.emergency.href}>
-              {NAVBAR_CTA.emergency.label}
-            </Link>
-          </PrimaryButton>
+          {user ? (
+            <div className="flex items-center gap-2">
+              <SecondaryButton asChild size="sm">
+                <Link href="/dashboard" className="gap-1.5">
+                  <User className="size-4 text-primary" /> Dashboard
+                </Link>
+              </SecondaryButton>
+              <button
+                onClick={() => logout()}
+                className="inline-flex size-9 items-center justify-center rounded-lg border border-border/70 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                title="Sign Out"
+              >
+                <LogOut className="size-4" />
+              </button>
+            </div>
+          ) : (
+            <>
+              <SecondaryButton asChild size="sm">
+                <Link href="/login">Sign In</Link>
+              </SecondaryButton>
+              <PrimaryButton asChild size="sm">
+                <Link href="/register">Become a Donor</Link>
+              </PrimaryButton>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-2 lg:hidden">
@@ -122,7 +156,8 @@ export function Navbar({
                     href={link.href}
                     className={cn(
                       "rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                      isActive(link.href) && "bg-primary/5 text-foreground border-l-2 border-primary"
+                      isActive(link.href) &&
+                        "bg-primary/5 text-foreground border-l-2 border-primary"
                     )}
                   >
                     {link.label}
@@ -130,14 +165,25 @@ export function Navbar({
                 ))}
               </nav>
               <div className="grid gap-2 sm:grid-cols-2">
-                <SecondaryButton asChild>
-                  <Link href={NAVBAR_CTA.donor.href}>{NAVBAR_CTA.donor.label}</Link>
-                </SecondaryButton>
-                <PrimaryButton asChild>
-                  <Link href={NAVBAR_CTA.emergency.href}>
-                    {NAVBAR_CTA.emergency.label}
-                  </Link>
-                </PrimaryButton>
+                {user ? (
+                  <>
+                    <SecondaryButton asChild>
+                      <Link href="/dashboard">Dashboard</Link>
+                    </SecondaryButton>
+                    <PrimaryButton onClick={() => logout()}>
+                      Sign Out
+                    </PrimaryButton>
+                  </>
+                ) : (
+                  <>
+                    <SecondaryButton asChild>
+                      <Link href="/login">Sign In</Link>
+                    </SecondaryButton>
+                    <PrimaryButton asChild>
+                      <Link href="/register">Become a Donor</Link>
+                    </PrimaryButton>
+                  </>
+                )}
               </div>
             </Container>
           </motion.div>
