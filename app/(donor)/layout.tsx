@@ -1,11 +1,15 @@
 import { DonorSidebar } from "@/components/donor/donor-sidebar";
 import { DonorHeader } from "@/components/donor/donor-header";
+import { requireDonor } from "@/lib/rbac";
 
-export default function DonorLayout({
+export default async function DonorLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Enforce server-side role check: user must be authenticated AND have the 'donor' role
+  await requireDonor();
+
   return (
     <div className="flex min-h-screen bg-background">
       <DonorSidebar />
