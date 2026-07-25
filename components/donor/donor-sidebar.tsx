@@ -4,23 +4,26 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
+  User,
   History,
   Calendar,
-  Trophy,
   Megaphone,
+  Bell,
   Settings,
   Droplet,
   LogOut,
-  Heart
+  Heart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logout } from "@/lib/actions/auth";
 
 const donorSidebarItems = [
-  { name: "Dashboard", href: "/donor", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/donor/dashboard", icon: LayoutDashboard },
+  { name: "My Profile", href: "/donor/profile", icon: User },
   { name: "My Donations", href: "/donor/donations", icon: History },
   { name: "Appointments", href: "/donor/appointments", icon: Calendar },
-  { name: "Impact & Badges", href: "/donor/impact", icon: Trophy },
   { name: "Campaigns", href: "/donor/campaigns", icon: Megaphone },
+  { name: "Notifications", href: "/donor/notifications", icon: Bell },
   { name: "Settings", href: "/donor/settings", icon: Settings },
 ];
 
@@ -42,7 +45,10 @@ export function DonorSidebar() {
       <div className="flex-1 overflow-y-auto py-6 px-4">
         <nav className="space-y-1.5">
           {donorSidebarItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              pathname === item.href ||
+              (item.href !== "/donor/dashboard" && pathname?.startsWith(item.href)) ||
+              (item.href === "/donor/dashboard" && (pathname === "/donor" || pathname === "/donor/dashboard"));
             return (
               <Link
                 key={item.name}
@@ -85,7 +91,11 @@ export function DonorSidebar() {
               <p className="text-[10px] text-muted-foreground truncate uppercase font-bold tracking-tight">O Positive (O+)</p>
             </div>
           </div>
-          <button className="text-muted-foreground hover:text-destructive transition-colors">
+          <button
+            onClick={() => logout()}
+            className="text-muted-foreground hover:text-destructive transition-colors p-1"
+            title="Sign Out"
+          >
             <LogOut className="w-4 h-4" />
           </button>
         </div>
