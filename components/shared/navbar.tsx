@@ -30,7 +30,7 @@ export function Navbar({
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [user, setUser] = useState<{ email?: string } | null>(null);
+  const [user, setUser] = useState<{ email?: string; user_metadata?: { role?: string } } | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -101,7 +101,7 @@ export function Navbar({
           {user ? (
             <div className="flex items-center gap-2">
               <SecondaryButton asChild size="sm">
-                <Link href="/dashboard" className="gap-1.5">
+                <Link href={user.user_metadata?.role === "admin" ? "/admin/dashboard" : "/donor/dashboard"} className="gap-1.5">
                   <User className="size-4 text-primary" /> Dashboard
                 </Link>
               </SecondaryButton>
@@ -168,7 +168,7 @@ export function Navbar({
                 {user ? (
                   <>
                     <SecondaryButton asChild>
-                      <Link href="/dashboard">Dashboard</Link>
+                      <Link href={user.user_metadata?.role === "admin" ? "/admin/dashboard" : "/donor/dashboard"}>Dashboard</Link>
                     </SecondaryButton>
                     <PrimaryButton onClick={() => logout()}>
                       Sign Out
