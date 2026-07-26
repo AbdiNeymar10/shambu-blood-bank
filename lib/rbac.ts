@@ -41,23 +41,21 @@ export async function getAuthUser(): Promise<AuthUser | null> {
     .eq("auth_id", user.id)
     .single();
 
-  if (!profile) return null;
-
-  const row = profile as {
-    id: string;
-    email: string;
-    full_name: string;
-    role: UserRole;
-    avatar_url: string | null;
-  };
+  const role =
+    (profile as { role?: UserRole } | null)?.role ||
+    (user.user_metadata?.role as UserRole) ||
+    "donor";
 
   return {
     authId: user.id,
-    id: row.id,
-    email: row.email,
-    fullName: row.full_name,
-    role: row.role,
-    avatarUrl: row.avatar_url,
+    id: (profile as { id?: string } | null)?.id || user.id,
+    email: (profile as { email?: string } | null)?.email || user.email || "",
+    fullName:
+      (profile as { full_name?: string } | null)?.full_name ||
+      (user.user_metadata?.full_name as string) ||
+      "Donor",
+    role,
+    avatarUrl: (profile as { avatar_url?: string | null } | null)?.avatar_url || null,
   };
 }
 
@@ -110,7 +108,7 @@ export async function requireAdmin(): Promise<AuthUser> {
 
   if (!isAdmin(user!.role)) {
     // Donor / other role — send them to their own dashboard
-    redirect("/dashboard");
+    redirect("/donor/dashboard");
   }
 
   return user!;
@@ -119,7 +117,7 @@ export async function requireAdmin(): Promise<AuthUser> {
 /**
  * Requires the authenticated user to have the DONOR role.
  * - Unauthenticated → /login
- * - Authenticated admin → /admin  (admins have their own space)
+ * - Authenticated admin → /admin/dashboard  (admins have their own space)
  */
 export async function requireDonor(): Promise<AuthUser> {
   const user = await getAuthUser();
@@ -130,7 +128,7 @@ export async function requireDonor(): Promise<AuthUser> {
 
   if (isAdmin(user!.role)) {
     // Admin accidentally landed on donor area → push to admin dashboard
-    redirect("/admin");
+    redirect("/admin/dashboard");
   }
 
   return user!;
