@@ -43,7 +43,7 @@ export default function RegisterPage() {
       const res = await registerDonor(prevState, formData);
       setLoading(false);
       if (res.success && res.redirectTo) {
-        router.push(res.redirectTo);
+        window.location.href = res.redirectTo;
       }
       return res;
     },
