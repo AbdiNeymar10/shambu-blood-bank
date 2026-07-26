@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { logout } from "@/lib/actions/auth";
 
 const sidebarItems = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -115,14 +116,23 @@ export function Sidebar() {
         </nav>
       </div>
       <div className="p-4 border-t border-border">
-        <div className="flex items-center gap-3 p-3 bg-secondary rounded-lg">
-          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
-            {getInitials(adminUser.fullName)}
+        <div className="flex items-center justify-between p-3 bg-secondary rounded-lg group">
+          <div className="flex items-center gap-3 overflow-hidden min-w-0">
+            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
+              {getInitials(adminUser.fullName)}
+            </div>
+            <div className="overflow-hidden min-w-0">
+              <p className="text-sm font-medium truncate">{adminUser.fullName}</p>
+              <p className="text-xs text-muted-foreground truncate">{adminUser.email}</p>
+            </div>
           </div>
-          <div className="overflow-hidden min-w-0 flex-1">
-            <p className="text-sm font-medium truncate">{adminUser.fullName}</p>
-            <p className="text-xs text-muted-foreground truncate">{adminUser.email}</p>
-          </div>
+          <button
+            onClick={() => logout()}
+            className="text-muted-foreground hover:text-destructive transition-colors p-1.5 rounded-md hover:bg-destructive/10 shrink-0 ml-1"
+            title="Sign Out"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </aside>
