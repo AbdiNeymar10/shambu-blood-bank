@@ -64,18 +64,16 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user) {
-    let role = (user.user_metadata?.role as string | undefined);
+    const { data: profile } = await supabase
+      .from("users")
+      .select("role")
+      .eq("auth_id", user.id)
+      .maybeSingle();
 
-    if (!role) {
-      const { data: profile } = await supabase
-        .from("users")
-        .select("role")
-        .eq("auth_id", user.id)
-        .single();
-      role = (profile as { role?: string } | null)?.role;
-    }
-
-    role = role || "donor";
+    const role =
+      (profile as { role?: string } | null)?.role ||
+      (user.user_metadata?.role as string | undefined) ||
+      "donor";
 
     // 1. If logged in user tries to access guest auth pages, redirect to appropriate dashboard directly
     if (isAuthGuestRoute) {
