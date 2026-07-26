@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logout } from "@/lib/actions/auth";
+import { createClient } from "@/lib/supabase/client";
 
 const donorSidebarItems = [
   { name: "Dashboard", href: "/donor/dashboard", icon: LayoutDashboard },
@@ -29,6 +31,36 @@ const donorSidebarItems = [
 
 export function DonorSidebar() {
   const pathname = usePathname();
+  const [donorName, setDonorName] = useState<string>("Donor");
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user) {
+        let name = (user.user_metadata?.full_name as string) || "";
+        const { data: profile } = await supabase
+          .from("users")
+          .select("full_name")
+          .eq("auth_id", user.id)
+          .maybeSingle();
+
+        const userRow = profile as { full_name?: string } | null;
+        if (userRow?.full_name) {
+          name = userRow.full_name;
+        }
+
+        setDonorName(name || "Donor User");
+      }
+    });
+  }, []);
+
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(" ").filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return (name.slice(0, 2) || "DU").toUpperCase();
+  };
 
   return (
     <aside className="w-64 bg-card border-r border-border h-screen sticky top-0 flex flex-col shadow-sm hidden md:flex">
@@ -82,18 +114,18 @@ export function DonorSidebar() {
 
       <div className="p-4 border-t border-border">
         <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg group">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">
-              JD
+          <div className="flex items-center gap-3 overflow-hidden min-w-0">
+            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
+              {getInitials(donorName)}
             </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-medium truncate">John Donor</p>
+            <div className="overflow-hidden min-w-0">
+              <p className="text-sm font-medium truncate">{donorName}</p>
               <p className="text-[10px] text-muted-foreground truncate uppercase font-bold tracking-tight">O Positive (O+)</p>
             </div>
           </div>
           <button
             onClick={() => logout()}
-            className="text-muted-foreground hover:text-destructive transition-colors p-1"
+            className="text-muted-foreground hover:text-destructive transition-colors p-1 shrink-0 ml-1"
             title="Sign Out"
           >
             <LogOut className="w-4 h-4" />
