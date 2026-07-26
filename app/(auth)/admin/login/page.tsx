@@ -20,7 +20,7 @@ export default function AdminLoginPage() {
       const res = await loginAdmin(prevState, formData);
       setLoading(false);
       if (res.success && res.redirectTo) {
-        router.push(res.redirectTo);
+        window.location.href = res.redirectTo;
       }
       return res;
     },
