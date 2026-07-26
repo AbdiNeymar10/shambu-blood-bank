@@ -94,7 +94,7 @@ export default function AdminLoginPage() {
             <PrimaryButton
               type="submit"
               size="lg"
-              className="w-full justify-center text-base bg-rose-600 hover:bg-rose-700 text-white border-rose-500"
+              className="w-full justify-center text-base"
               disabled={isPending}
             >
               {isPending ? (
