@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -13,8 +14,10 @@ import {
   Bell,
   BarChart,
   Settings,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 const sidebarItems = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -31,6 +34,49 @@ const sidebarItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [adminUser, setAdminUser] = useState<{
+    fullName: string;
+    email: string;
+  }>({
+    fullName: "Admin User",
+    email: "admin@shambu.com",
+  });
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user) {
+        let fullName = (user.user_metadata?.full_name as string) || "";
+        let email = user.email || "";
+
+        const { data: profile } = await supabase
+          .from("users")
+          .select("full_name, email")
+          .eq("auth_id", user.id)
+          .maybeSingle();
+
+        const userRow = profile as { full_name?: string; email?: string } | null;
+
+        if (userRow) {
+          if (userRow.full_name) fullName = userRow.full_name;
+          if (userRow.email) email = userRow.email;
+        }
+
+        setAdminUser({
+          fullName: fullName || "Administrator",
+          email: email || user.email || "admin@shambu.com",
+        });
+      }
+    });
+  }, []);
+
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(" ").filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return (name.slice(0, 2) || "AD").toUpperCase();
+  };
 
   return (
     <aside className="w-64 bg-card border-r border-border h-screen sticky top-0 flex flex-col shadow-sm hidden md:flex">
@@ -70,12 +116,12 @@ export function Sidebar() {
       </div>
       <div className="p-4 border-t border-border">
         <div className="flex items-center gap-3 p-3 bg-secondary rounded-lg">
-          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">
-            AD
+          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
+            {getInitials(adminUser.fullName)}
           </div>
-          <div className="overflow-hidden">
-            <p className="text-sm font-medium truncate">Admin User</p>
-            <p className="text-xs text-muted-foreground truncate">admin@shambu.com</p>
+          <div className="overflow-hidden min-w-0 flex-1">
+            <p className="text-sm font-medium truncate">{adminUser.fullName}</p>
+            <p className="text-xs text-muted-foreground truncate">{adminUser.email}</p>
           </div>
         </div>
       </div>
