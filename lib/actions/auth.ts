@@ -97,7 +97,7 @@ export async function loginAdmin(
       .from("users")
       .select("role")
       .eq("auth_id", data.user.id)
-      .single();
+      .maybeSingle();
 
     const role =
       (userData as { role: UserRole } | null)?.role ||
@@ -109,6 +109,11 @@ export async function loginAdmin(
         error: "Access denied. Only administrator accounts can access this portal.",
       };
     }
+
+    // Keep metadata in sync with database role
+    await supabase.auth.updateUser({
+      data: { role: "admin" },
+    });
 
     return { success: true, redirectTo: "/admin/dashboard" };
   } catch (err: any) {
@@ -145,14 +150,15 @@ export async function registerDonor(
 
   try {
     const supabase = await createClient();
-    const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-    // 1. Sign up user via Supabase Auth
+    console.log("[register] step1: calling signUp for", email.trim());
+
+    // 1. Sign up user via Supabase Auth (the handle_new_user DB trigger will
+    //    automatically create the public.users row via SECURITY DEFINER)
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
-        emailRedirectTo: `${origin}/auth/callback`,
         data: {
           full_name: fullName,
           role: "donor",
@@ -160,10 +166,13 @@ export async function registerDonor(
       },
     });
 
+    console.log("[register] step1 FULL result:", JSON.stringify({ user: data?.user, session: !!data?.session, error }));
+
     let user = data.user;
 
     if (error) {
-      // If email rate limit is hit, attempt to sign in directly if account exists
+      // signUp failed — could be duplicate email, rate limit, or empty error {}
+      // Always try signing in directly (handles "already registered" case)
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -171,50 +180,94 @@ export async function registerDonor(
 
       if (!signInError && signInData.user) {
         user = signInData.user;
+        console.log("[register] step1 fallback signIn success, user=", user.id);
       } else {
-        if (error.message.toLowerCase().includes("rate limit")) {
-          return {
-            error:
-              "Email rate limit reached.",
-          };
+        // Return the most descriptive error we can build
+        const errMsg = error?.message || error?.code || "";
+        if (errMsg.toLowerCase().includes("rate limit")) {
+          return { error: "Email rate limit reached. Please wait a moment and try again." };
         }
-        return { error: error.message };
+        if (errMsg) {
+          return { error: errMsg };
+        }
+        // Empty error {} — most likely the email already exists but wrong password
+        return {
+          error: "Registration failed. This email may already be registered with a different password, or the service is temporarily unavailable.",
+        };
       }
     }
 
     if (user) {
-      // 2. Ensure public.users entry exists
-      let { data: existingUser } = await supabase
-        .from("users")
-        .select("id")
-        .eq("auth_id", user.id)
-        .single();
-
-      let userId = (existingUser as { id: string } | null)?.id;
-
-      if (!userId) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: newUser } = await (supabase as any)
+      // 2. Wait for the handle_new_user trigger to create the public.users row.
+      //    The trigger fires on auth.users INSERT but may have slight latency —
+      //    retry up to 3 times with an 800ms pause before each retry.
+      let userId: string | undefined;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 800));
+        }
+        console.log("[register] step2: looking up users row, attempt", attempt + 1);
+        const { data: existingUser, error: lookupErr } = await supabase
           .from("users")
-          .insert([
-            {
-              auth_id: user.id,
-              email: email.trim(),
-              full_name: fullName,
-              phone: phone || null,
-              role: "donor" as UserRole,
-            },
-          ])
           .select("id")
-          .single();
+          .eq("auth_id", user.id)
+          .maybeSingle();
 
-        userId = (newUser as { id: string } | null)?.id;
+        console.log("[register] step2 result:", existingUser, "lookupErr:", lookupErr?.message);
+
+        if (existingUser) {
+          userId = (existingUser as { id: string }).id;
+          break;
+        }
+      }
+
+      console.log("[register] step2 final userId:", userId);
+
+      // Update phone / full_name after trigger created the row
+      if (userId && phone) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any)
+          .from("users")
+          .update({ phone, full_name: fullName })
+          .eq("id", userId);
+      }
+
+      // Fallback: if trigger hasn't fired, insert directly (requires INSERT policy or service role)
+      if (!userId) {
+        console.log("[register] step2 fallback: attempting manual upsert");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: newUser, error: userError } = await (supabase as any)
+          .from("users")
+          .upsert(
+            [
+              {
+                auth_id: user.id,
+                email: email.trim(),
+                full_name: fullName,
+                phone: phone || null,
+                role: "donor" as UserRole,
+              },
+            ],
+            { onConflict: "auth_id" }
+          )
+          .select("id")
+          .maybeSingle();
+
+        console.log("[register] step2 fallback result:", newUser, "error:", userError?.message);
+
+        if (userError) {
+          console.error("User profile upsert error (fallback):", userError);
+          // Non-fatal — donor_profiles can be populated on first login
+        } else {
+          userId = (newUser as { id: string } | null)?.id;
+        }
       }
 
       // 3. Create or update public.donor_profiles entry
+      console.log("[register] step3: upserting donor_profiles, userId=", userId);
       if (userId) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any)
+        const { error: profileError } = await (supabase as any)
           .from("donor_profiles")
           .upsert(
             [
@@ -229,11 +282,20 @@ export async function registerDonor(
             ],
             { onConflict: "user_id" }
           );
+
+        console.log("[register] step3 result: profileError=", profileError?.message);
+
+        if (profileError) {
+          console.error("Donor profile upsert error:", profileError);
+          return { error: profileError.message || profileError.details || "Failed to save donor profile details." };
+        }
       }
     }
 
-    // Sign out active session created during registration so user signs in manually on /login
+    // Sign out the session created during registration so the user must sign in manually
     await supabase.auth.signOut();
+
+    console.log("[register] complete — success!");
 
     return {
       success: true,
@@ -242,9 +304,15 @@ export async function registerDonor(
     };
   } catch (err: any) {
     console.error("Supabase Register Error:", err);
-    return {
-      error: err?.message || "An unexpected error occurred during registration.",
-    };
+    const rawMsg =
+      typeof err === "string"
+        ? err
+        : err?.message || err?.error_description || (typeof err === "object" ? JSON.stringify(err) : "");
+    const cleanError =
+      !rawMsg || rawMsg === "{}"
+        ? "An unexpected error occurred during registration. Please check your details and try again."
+        : rawMsg;
+    return { error: cleanError };
   }
 }
 
@@ -263,10 +331,9 @@ export async function forgotPassword(
 
   try {
     const supabase = await createClient();
-    const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${origin}/auth/callback?next=/reset-password`,
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/callback?next=/reset-password`,
     });
 
     if (error) {
