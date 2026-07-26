@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
 export default function DashboardRedirectPage() {
-  redirect("/donor");
+  redirect("/donor/dashboard");
 }
+
