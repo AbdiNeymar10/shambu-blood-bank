@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useActionState, useState } from "react";
+import React, { useActionState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Logo } from "@/components/shared/logo";
 import { Container } from "@/components/shared/container";
 import { GlassCard } from "@/components/shared/glass-card";
 import { PrimaryButton } from "@/components/shared/primary-button";
-import { registerDonor, type AuthActionResult } from "@/lib/actions/auth";
+import { registerDonor } from "@/lib/actions/auth";
 import type { BloodGroup } from "@/types/database.types";
 import {
   AlertCircle,
@@ -34,21 +33,13 @@ const BLOOD_GROUPS: readonly BloodGroup[] = [
 ];
 
 export default function RegisterPage() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [state, formAction, isPending] = useActionState(registerDonor, null);
 
-  const [state, formAction] = useActionState(
-    async (prevState: AuthActionResult | null, formData: FormData) => {
-      setLoading(true);
-      const res = await registerDonor(prevState, formData);
-      setLoading(false);
-      if (res.success && res.redirectTo) {
-        window.location.href = res.redirectTo;
-      }
-      return res;
-    },
-    null
-  );
+  useEffect(() => {
+    if (state?.success && state?.redirectTo) {
+      window.location.href = state.redirectTo;
+    }
+  }, [state]);
 
   return (
     <div className="min-h-[90vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-background via-card/20 to-background">
@@ -268,9 +259,9 @@ export default function RegisterPage() {
               type="submit"
               size="lg"
               className="w-full justify-center text-base mt-2"
-              disabled={loading}
+              disabled={isPending}
             >
-              {loading ? (
+              {isPending ? (
                 "Creating Donor Account..."
               ) : (
                 <span className="inline-flex items-center gap-2">
