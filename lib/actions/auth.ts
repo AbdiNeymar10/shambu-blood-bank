@@ -12,7 +12,7 @@ export type AuthActionResult = {
 };
 
 /**
- * Handles Donor Login
+ * Handles Donor Login using Supabase Auth
  */
 export async function loginDonor(
   prevState: AuthActionResult | null,
@@ -22,34 +22,49 @@ export async function loginDonor(
   const password = formData.get("password") as string;
 
   if (!email || !password) {
-    return { error: "Email and password are required." };
+    return { error: "Email address and password are required." };
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
 
-  if (error) {
-    return { error: error.message };
+    if (error) {
+      return { error: error.message };
+    }
+
+    if (!data.user) {
+      return { error: "Failed to authenticate user. Please try again." };
+    }
+
+    // Fetch user role from public.users table (fallback to metadata)
+    const { data: userData } = await supabase
+      .from("users")
+      .select("role")
+      .eq("auth_id", data.user.id)
+      .single();
+
+    const role =
+      (userData as { role: UserRole } | null)?.role ||
+      (data.user.user_metadata?.role as UserRole) ||
+      "donor";
+
+    const targetRoute = role === "admin" ? "/admin/dashboard" : "/donor/dashboard";
+
+    return { success: true, redirectTo: targetRoute };
+  } catch (err: any) {
+    console.error("Supabase Login Error:", err);
+    return {
+      error: err?.message || "An unexpected error occurred during sign in.",
+    };
   }
-
-  // Fetch user role from public.users table
-  const { data: userData } = await supabase
-    .from("users")
-    .select("role")
-    .eq("auth_id", data.user.id)
-    .single();
-
-  const role = (userData as { role: UserRole } | null)?.role ?? "donor";
-  const targetRoute = role === "admin" ? "/admin" : "/dashboard";
-
-  return { success: true, redirectTo: targetRoute };
 }
 
 /**
- * Handles Dedicated Admin Login
+ * Handles Dedicated Admin Login using Supabase Auth
  */
 export async function loginAdmin(
   prevState: AuthActionResult | null,
@@ -59,38 +74,53 @@ export async function loginAdmin(
   const password = formData.get("password") as string;
 
   if (!email || !password) {
-    return { error: "Email and password are required." };
+    return { error: "Email address and password are required." };
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
 
-  if (error) {
-    return { error: error.message };
-  }
+    if (error) {
+      return { error: error.message };
+    }
 
-  // Verify that the user has admin role
-  const { data: userData } = await supabase
-    .from("users")
-    .select("role")
-    .eq("auth_id", data.user.id)
-    .single();
+    if (!data.user) {
+      return { error: "Failed to authenticate user." };
+    }
 
-  if ((userData as { role: UserRole } | null)?.role !== "admin") {
-    await supabase.auth.signOut();
+    // Verify that the user has admin role
+    const { data: userData } = await supabase
+      .from("users")
+      .select("role")
+      .eq("auth_id", data.user.id)
+      .single();
+
+    const role =
+      (userData as { role: UserRole } | null)?.role ||
+      (data.user.user_metadata?.role as UserRole);
+
+    if (role !== "admin") {
+      await supabase.auth.signOut();
+      return {
+        error: "Access denied. Only administrator accounts can access this portal.",
+      };
+    }
+
+    return { success: true, redirectTo: "/admin/dashboard" };
+  } catch (err: any) {
+    console.error("Supabase Admin Login Error:", err);
     return {
-      error: "Access denied. Only administrator accounts can access this portal.",
+      error: err?.message || "An unexpected error occurred during admin sign in.",
     };
   }
-
-  return { success: true, redirectTo: "/admin" };
 }
 
 /**
- * Handles Donor Registration
+ * Handles Donor Registration using Supabase Auth & PostgreSQL Tables
  */
 export async function registerDonor(
   prevState: AuthActionResult | null,
@@ -106,85 +136,109 @@ export async function registerDonor(
   const address = formData.get("address") as string;
 
   if (!fullName || !email || !password || !bloodGroup || !dateOfBirth) {
-    return { error: "Please fill out all required fields." };
+    return { error: "Please fill out all required fields marked with *." };
   }
 
-  const supabase = await createClient();
-  const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  if (password.length < 6) {
+    return { error: "Password must be at least 6 characters long." };
+  }
 
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${origin}/auth/callback`,
-      data: {
-        full_name: fullName,
-        role: "donor",
+  try {
+    const supabase = await createClient();
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+    // 1. Sign up user via Supabase Auth
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        emailRedirectTo: `${origin}/auth/callback`,
+        data: {
+          full_name: fullName,
+          role: "donor",
+        },
       },
-    },
-  });
+    });
 
-  if (error) {
-    return { error: error.message };
-  }
+    if (error) {
+      return { error: error.message };
+    }
 
-  if (data.user) {
-    // Check or insert public.users row
-    const { data: existingUser } = await supabase
-      .from("users")
-      .select("id")
-      .eq("auth_id", data.user.id)
-      .single();
-
-    let userId = (existingUser as { id: string } | null)?.id;
-
-    if (!userId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: newUser } = await (supabase as any)
+    if (data.user) {
+      // 2. Ensure public.users entry exists
+      let { data: existingUser } = await supabase
         .from("users")
-        .insert([
-          {
-            auth_id: data.user.id as string,
-            email,
-            full_name: fullName,
-            phone,
-            role: "donor" as UserRole,
-          },
-        ])
         .select("id")
+        .eq("auth_id", data.user.id)
         .single();
-      userId = (newUser as { id: string } | null)?.id;
-    }
 
-    if (userId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
-        .from("donor_profiles")
-        .upsert(
-          [
+      let userId = (existingUser as { id: string } | null)?.id;
+
+      if (!userId) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: newUser } = await (supabase as any)
+          .from("users")
+          .insert([
             {
-              user_id: userId as string,
-              blood_group: bloodGroup,
-              date_of_birth: dateOfBirth,
-              address,
-              city,
-              is_available: true,
+              auth_id: data.user.id,
+              email: email.trim(),
+              full_name: fullName,
+              phone: phone || null,
+              role: "donor" as UserRole,
             },
-          ],
-          { onConflict: "user_id" }
-        );
-    }
-  }
+          ])
+          .select("id")
+          .single();
 
-  return {
-    success: true,
-    message: "Registration successful! Please check your email to verify your account.",
-    redirectTo: "/verify-email",
-  };
+        userId = (newUser as { id: string } | null)?.id;
+      }
+
+      // 3. Create or update public.donor_profiles entry
+      if (userId) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any)
+          .from("donor_profiles")
+          .upsert(
+            [
+              {
+                user_id: userId,
+                blood_group: bloodGroup,
+                date_of_birth: dateOfBirth,
+                address: address || null,
+                city,
+                is_available: true,
+              },
+            ],
+            { onConflict: "user_id" }
+          );
+      }
+    }
+
+    // If session is active (email confirmation disabled in Supabase settings)
+    if (data.session) {
+      return {
+        success: true,
+        message: "Registration successful! Welcome to Shambu Blood Bank.",
+        redirectTo: "/donor/dashboard",
+      };
+    }
+
+    // If email confirmation is enabled in Supabase
+    return {
+      success: true,
+      message: "Registration successful! Please check your email to verify your account.",
+      redirectTo: "/verify-email",
+    };
+  } catch (err: any) {
+    console.error("Supabase Register Error:", err);
+    return {
+      error: err?.message || "An unexpected error occurred during registration.",
+    };
+  }
 }
 
 /**
- * Handles Requesting Password Reset Email
+ * Handles Requesting Password Reset Email via Supabase
  */
 export async function forgotPassword(
   prevState: AuthActionResult | null,
@@ -196,25 +250,32 @@ export async function forgotPassword(
     return { error: "Please enter your registered email address." };
   }
 
-  const supabase = await createClient();
-  const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  try {
+    const supabase = await createClient();
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/reset-password`,
-  });
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${origin}/reset-password`,
+    });
 
-  if (error) {
-    return { error: error.message };
+    if (error) {
+      return { error: error.message };
+    }
+
+    return {
+      success: true,
+      message: "Password reset link sent! Check your email inbox.",
+    };
+  } catch (err: any) {
+    console.error("Supabase Forgot Password Error:", err);
+    return {
+      error: err?.message || "An unexpected error occurred.",
+    };
   }
-
-  return {
-    success: true,
-    message: "Password reset link sent! Check your email inbox.",
-  };
 }
 
 /**
- * Handles Updating Password after Reset Link Click
+ * Handles Updating Password via Supabase after Reset Link Click
  */
 export async function resetPassword(
   prevState: AuthActionResult | null,
@@ -231,25 +292,36 @@ export async function resetPassword(
     return { error: "Passwords do not match." };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ password });
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.updateUser({ password });
 
-  if (error) {
-    return { error: error.message };
+    if (error) {
+      return { error: error.message };
+    }
+
+    return {
+      success: true,
+      message: "Password successfully updated! You can now log in.",
+      redirectTo: "/login",
+    };
+  } catch (err: any) {
+    console.error("Supabase Reset Password Error:", err);
+    return {
+      error: err?.message || "An unexpected error occurred while resetting password.",
+    };
   }
-
-  return {
-    success: true,
-    message: "Password successfully updated! You can now log in.",
-    redirectTo: "/login",
-  };
 }
 
 /**
- * Signs Out Current User
+ * Signs Out Current User via Supabase Auth
  */
 export async function logout(): Promise<void> {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  try {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+  } catch (err) {
+    console.error("Logout Error:", err);
+  }
   redirect("/login");
 }
