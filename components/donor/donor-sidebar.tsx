@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { logout } from "@/lib/actions/auth";
 import { createClient } from "@/lib/supabase/client";
+import { getEligibilityInfo, type EligibilityInfo } from "@/lib/actions/eligibility";
 
 const donorSidebarItems = [
   { name: "Dashboard", href: "/donor/dashboard", icon: LayoutDashboard },
@@ -25,6 +26,7 @@ const donorSidebarItems = [
   { name: "My Donations", href: "/donor/donations", icon: History },
   { name: "Appointments", href: "/donor/appointments", icon: Calendar },
   { name: "Campaigns", href: "/donor/campaigns", icon: Megaphone },
+  { name: "Next Eligibility", href: "/donor/eligibility", icon: Heart },
   { name: "Notifications", href: "/donor/notifications", icon: Bell },
   { name: "Settings", href: "/donor/settings", icon: Settings },
 ];
@@ -32,6 +34,7 @@ const donorSidebarItems = [
 export function DonorSidebar() {
   const pathname = usePathname();
   const [donorName, setDonorName] = useState<string>("Donor");
+  const [eligibility, setEligibility] = useState<EligibilityInfo | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -52,6 +55,9 @@ export function DonorSidebar() {
         setDonorName(name || "Donor User");
       }
     });
+
+    // Load eligibility info
+    getEligibilityInfo().then((info) => setEligibility(info));
   }, []);
 
   const getInitials = (name: string) => {
@@ -104,11 +110,31 @@ export function DonorSidebar() {
             <Heart className="w-4 h-4 text-primary fill-primary" />
             <span className="text-xs font-semibold text-primary uppercase tracking-wider">Next Eligibility</span>
           </div>
-          <p className="text-sm font-bold text-foreground">June 15, 2026</p>
-          <p className="text-[10px] text-muted-foreground mt-1">45 days remaining</p>
-          <div className="w-full bg-secondary h-1.5 rounded-full mt-2 overflow-hidden">
-            <div className="bg-primary h-full w-[65%]" />
-          </div>
+          {eligibility ? (
+            eligibility.isEligible ? (
+              <>
+                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">Eligible Now!</p>
+                <p className="text-[10px] text-muted-foreground mt-1">Ready to donate today</p>
+                <div className="w-full bg-secondary h-1.5 rounded-full mt-2 overflow-hidden">
+                  <div className="bg-emerald-500 h-full w-full" />
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-bold text-foreground">{eligibility.nextEligibleFormatted}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{eligibility.daysRemaining} days remaining</p>
+                <div className="w-full bg-secondary h-1.5 rounded-full mt-2 overflow-hidden">
+                  <div className="bg-primary h-full" style={{ width: `${eligibility.progressPercent}%` }} />
+                </div>
+              </>
+            )
+          ) : (
+            <>
+              <p className="text-sm font-bold text-foreground">—</p>
+              <p className="text-[10px] text-muted-foreground mt-1">Loading...</p>
+              <div className="w-full bg-secondary h-1.5 rounded-full mt-2" />
+            </>
+          )}
         </div>
       </div>
 
