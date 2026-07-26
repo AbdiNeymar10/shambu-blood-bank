@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useActionState, useState } from "react";
+import React, { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Logo } from "@/components/shared/logo";
@@ -8,11 +8,22 @@ import { Container } from "@/components/shared/container";
 import { GlassCard } from "@/components/shared/glass-card";
 import { PrimaryButton } from "@/components/shared/primary-button";
 import { resetPassword, type AuthActionResult } from "@/lib/actions/auth";
+import { createClient } from "@/lib/supabase/client";
 import { AlertCircle, CheckCircle2, KeyRound, Lock } from "lucide-react";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      // Listens for session exchange from recovery link
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const [state, formAction] = useActionState(
     async (prevState: AuthActionResult | null, formData: FormData) => {
@@ -21,8 +32,8 @@ export default function ResetPasswordPage() {
       setLoading(false);
       if (res.success && res.redirectTo) {
         setTimeout(() => {
-          router.push(res.redirectTo!);
-        }, 1500);
+          window.location.href = res.redirectTo!;
+        }, 1200);
       }
       return res;
     },
