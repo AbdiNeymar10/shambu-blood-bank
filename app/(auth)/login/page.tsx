@@ -1,17 +1,19 @@
 "use client";
 
-import React, { useActionState, useState } from "react";
+import React, { Suspense, useActionState, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Logo } from "@/components/shared/logo";
 import { Container } from "@/components/shared/container";
 import { GlassCard } from "@/components/shared/glass-card";
 import { PrimaryButton } from "@/components/shared/primary-button";
 import { loginDonor, type AuthActionResult } from "@/lib/actions/auth";
-import { AlertCircle, ArrowRight, Lock, Mail, ShieldAlert } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle2, Lock, Mail, ShieldAlert } from "lucide-react";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isRegistered = searchParams.get("registered") === "true";
   const [loading, setLoading] = useState(false);
 
   const [state, formAction] = useActionState(
@@ -43,6 +45,13 @@ export default function LoginPage() {
         </div>
 
         <GlassCard className="p-6 sm:p-8 shadow-xl border-border/80 relative overflow-hidden">
+          {isRegistered && (
+            <div className="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-sm flex items-start gap-3">
+              <CheckCircle2 className="size-5 shrink-0 mt-0.5" />
+              <span>Registration successful! Please sign in with your email and password to access your dashboard.</span>
+            </div>
+          )}
+
           {state?.error && (
             <div className="mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-start gap-3">
               <AlertCircle className="size-5 shrink-0 mt-0.5" />
@@ -145,5 +154,13 @@ export default function LoginPage() {
         </GlassCard>
       </Container>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
   );
 }
