@@ -1,33 +1,26 @@
 "use client";
 
-import React, { Suspense, useActionState, useState } from "react";
+import React, { Suspense, useActionState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Logo } from "@/components/shared/logo";
 import { Container } from "@/components/shared/container";
 import { GlassCard } from "@/components/shared/glass-card";
 import { PrimaryButton } from "@/components/shared/primary-button";
-import { loginDonor, type AuthActionResult } from "@/lib/actions/auth";
+import { loginDonor } from "@/lib/actions/auth";
 import { AlertCircle, ArrowRight, CheckCircle2, Lock, Mail, ShieldAlert } from "lucide-react";
 
 function LoginContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const isRegistered = searchParams.get("registered") === "true";
-  const [loading, setLoading] = useState(false);
 
-  const [state, formAction] = useActionState(
-    async (prevState: AuthActionResult | null, formData: FormData) => {
-      setLoading(true);
-      const res = await loginDonor(prevState, formData);
-      setLoading(false);
-      if (res.success && res.redirectTo) {
-        window.location.href = res.redirectTo;
-      }
-      return res;
-    },
-    null
-  );
+  const [state, formAction, isPending] = useActionState(loginDonor, null);
+
+  useEffect(() => {
+    if (state?.success && state?.redirectTo) {
+      window.location.href = state.redirectTo;
+    }
+  }, [state]);
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-background via-card/20 to-background">
@@ -118,9 +111,9 @@ function LoginContent() {
               type="submit"
               size="lg"
               className="w-full justify-center text-base"
-              disabled={loading}
+              disabled={isPending}
             >
-              {loading ? (
+              {isPending ? (
                 "Signing in..."
               ) : (
                 <span className="inline-flex items-center gap-2">
