@@ -160,16 +160,34 @@ export async function registerDonor(
       },
     });
 
+    let user = data.user;
+
     if (error) {
-      return { error: error.message };
+      // If email rate limit is hit, attempt to sign in directly if account exists
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (!signInError && signInData.user) {
+        user = signInData.user;
+      } else {
+        if (error.message.toLowerCase().includes("rate limit")) {
+          return {
+            error:
+              "Email rate limit reached.",
+          };
+        }
+        return { error: error.message };
+      }
     }
 
-    if (data.user) {
+    if (user) {
       // 2. Ensure public.users entry exists
       let { data: existingUser } = await supabase
         .from("users")
         .select("id")
-        .eq("auth_id", data.user.id)
+        .eq("auth_id", user.id)
         .single();
 
       let userId = (existingUser as { id: string } | null)?.id;
@@ -180,7 +198,7 @@ export async function registerDonor(
           .from("users")
           .insert([
             {
-              auth_id: data.user.id,
+              auth_id: user.id,
               email: email.trim(),
               full_name: fullName,
               phone: phone || null,
@@ -214,20 +232,13 @@ export async function registerDonor(
       }
     }
 
-    // If session is active (email confirmation disabled in Supabase settings)
-    if (data.session) {
-      return {
-        success: true,
-        message: "Registration successful! Welcome to Shambu Blood Bank.",
-        redirectTo: "/donor/dashboard",
-      };
-    }
+    // Sign out active session created during registration so user signs in manually on /login
+    await supabase.auth.signOut();
 
-    // If email confirmation is enabled in Supabase
     return {
       success: true,
-      message: "Registration successful! Please check your email to verify your account.",
-      redirectTo: "/verify-email",
+      message: "Registration successful! Please sign in with your credentials to access your dashboard.",
+      redirectTo: "/login?registered=true",
     };
   } catch (err: any) {
     console.error("Supabase Register Error:", err);
