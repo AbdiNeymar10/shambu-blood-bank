@@ -1,31 +1,22 @@
 "use client";
 
-import React, { useActionState, useState } from "react";
+import React, { useActionState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Logo } from "@/components/shared/logo";
 import { Container } from "@/components/shared/container";
 import { GlassCard } from "@/components/shared/glass-card";
 import { PrimaryButton } from "@/components/shared/primary-button";
-import { loginAdmin, type AuthActionResult } from "@/lib/actions/auth";
+import { loginAdmin } from "@/lib/actions/auth";
 import { AlertCircle, ArrowRight, Lock, Mail, ShieldCheck } from "lucide-react";
 
 export default function AdminLoginPage() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [state, formAction, isPending] = useActionState(loginAdmin, null);
 
-  const [state, formAction] = useActionState(
-    async (prevState: AuthActionResult | null, formData: FormData) => {
-      setLoading(true);
-      const res = await loginAdmin(prevState, formData);
-      setLoading(false);
-      if (res.success && res.redirectTo) {
-        window.location.href = res.redirectTo;
-      }
-      return res;
-    },
-    null
-  );
+  useEffect(() => {
+    if (state?.success && state?.redirectTo) {
+      window.location.href = state.redirectTo;
+    }
+  }, [state]);
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-background via-red-950/10 to-background">
@@ -104,9 +95,9 @@ export default function AdminLoginPage() {
               type="submit"
               size="lg"
               className="w-full justify-center text-base bg-rose-600 hover:bg-rose-700 text-white border-rose-500"
-              disabled={loading}
+              disabled={isPending}
             >
-              {loading ? (
+              {isPending ? (
                 "Authenticating Admin..."
               ) : (
                 <span className="inline-flex items-center gap-2">
