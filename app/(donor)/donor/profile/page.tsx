@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { 
   User, 
   Mail, 
@@ -14,8 +15,49 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 
 export default function DonorProfilePage() {
+  const [donorData, setDonorData] = useState<{ fullName: string; email: string }>({
+    fullName: "Donor User",
+    email: "donor@example.com",
+  });
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user) {
+        let name = (user.user_metadata?.full_name as string) || "";
+        let email = user.email || "";
+
+        const { data: profile } = await supabase
+          .from("users")
+          .select("full_name, email")
+          .eq("auth_id", user.id)
+          .maybeSingle();
+
+        const userRow = profile as { full_name?: string; email?: string } | null;
+        if (userRow) {
+          if (userRow.full_name) name = userRow.full_name;
+          if (userRow.email) email = userRow.email;
+        }
+
+        setDonorData({
+          fullName: name || "Donor User",
+          email: email || user.email || "donor@example.com",
+        });
+      }
+    });
+  }, []);
+
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(" ").filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return (name.slice(0, 2) || "DU").toUpperCase();
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-4xl">
       {/* Header */}
@@ -36,10 +78,10 @@ export default function DonorProfilePage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 -mt-12 mb-6">
             <div className="flex items-end gap-4">
               <div className="w-24 h-24 rounded-2xl bg-card border-4 border-background flex items-center justify-center text-primary font-bold text-2xl shadow-md">
-                JD
+                {getInitials(donorData.fullName)}
               </div>
               <div className="mb-1">
-                <h2 className="text-2xl font-bold text-foreground">John Donor</h2>
+                <h2 className="text-2xl font-bold text-foreground">{donorData.fullName}</h2>
                 <p className="text-xs text-muted-foreground font-medium">Member since November 2024</p>
               </div>
             </div>
@@ -54,7 +96,7 @@ export default function DonorProfilePage() {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-3 text-muted-foreground">
                   <Mail className="w-4 h-4 text-primary" />
-                  <span className="text-foreground font-medium">john.donor@example.com</span>
+                  <span className="text-foreground font-medium">{donorData.email}</span>
                 </div>
                 <div className="flex items-center gap-3 text-muted-foreground">
                   <Phone className="w-4 h-4 text-primary" />
