@@ -266,7 +266,7 @@ export async function forgotPassword(
     const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${origin}/reset-password`,
+      redirectTo: `${origin}/auth/callback?next=/reset-password`,
     });
 
     if (error) {
@@ -308,6 +308,12 @@ export async function resetPassword(
     const { error } = await supabase.auth.updateUser({ password });
 
     if (error) {
+      if (error.message.toLowerCase().includes("session")) {
+        return {
+          error:
+            "Password reset link is invalid or has expired. Please request a new password reset link.",
+        };
+      }
       return { error: error.message };
     }
 
