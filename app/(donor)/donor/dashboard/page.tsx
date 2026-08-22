@@ -87,21 +87,21 @@ export default function DonorDashboardPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-rose-600 via-primary to-rose-700 p-8 text-white shadow-xl shadow-primary/10">
+      <div className="relative overflow-hidden rounded-3xl bg-primary text-primary-foreground p-8 shadow-xl shadow-primary/25">
         <div className="absolute right-0 top-0 -mr-12 -mt-12 w-64 h-64 rounded-full bg-white/10 blur-2xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-xl">
             <Badge className="bg-white/20 hover:bg-white/30 text-white border-none font-bold text-xs uppercase tracking-wider">
               Life Saver Status: Active
             </Badge>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight font-display">
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight font-display text-white">
               Welcome back, Hero!
             </h1>
-            <p className="text-white/80 text-sm leading-relaxed">
+            <p className="text-white/90 text-sm leading-relaxed font-medium">
               Your last donation on October 15, 2026 helped save up to 3 lives. Thank you for your continued dedication to the Shambu community.
             </p>
           </div>
-          <Button size="lg" asChild className="bg-white text-primary hover:bg-white/90 font-bold rounded-2xl shadow-lg shrink-0 border-none">
+          <Button size="lg" asChild className="bg-white text-primary hover:bg-white/95 font-bold rounded-2xl shadow-lg shrink-0 border-none">
             <a href="/donate">
               <Plus className="w-5 h-5 mr-2" /> Book Next Donation
             </a>
