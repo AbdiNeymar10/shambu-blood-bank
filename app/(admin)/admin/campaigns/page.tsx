@@ -11,8 +11,8 @@ import {
   X,
   AlertTriangle,
   Users,
-  FileText,
-  Droplet
+  Image as ImageIcon,
+  Link as LinkIcon
 } from "lucide-react";
 import { 
   getAdminCampaignsData, 
@@ -22,6 +22,13 @@ import {
   type CampaignVolunteerItem
 } from "@/lib/actions/campaigns";
 import { cn } from "@/lib/utils";
+
+const PRESET_CAMPAIGN_IMAGES = [
+  { label: "Community Blood Drive", url: "https://images.unsplash.com/photo-1615461066841-6116e61058f4?auto=format&fit=crop&q=80&w=800" },
+  { label: "Volunteers Donating", url: "https://images.unsplash.com/photo-1536856136534-bb679c52a9aa?auto=format&fit=crop&q=80&w=800" },
+  { label: "University Campus Outreach", url: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&q=80&w=800" },
+  { label: "Hospital Emergency Rally", url: "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&q=80&w=800" },
+];
 
 export default function AdminCampaignsPage() {
   const [campaigns, setCampaigns] = useState<AdminCampaignCard[]>([]);
@@ -36,6 +43,7 @@ export default function AdminCampaignsPage() {
     startDate: "",
     endDate: "",
     targetUnits: 150,
+    imageUrl: PRESET_CAMPAIGN_IMAGES[0].url,
   });
   const [isCreateSubmitting, setIsCreateSubmitting] = useState(false);
   const [createError, setCreateError] = useState("");
@@ -90,6 +98,7 @@ export default function AdminCampaignsPage() {
         startDate: "",
         endDate: "",
         targetUnits: 150,
+        imageUrl: PRESET_CAMPAIGN_IMAGES[0].url,
       });
       loadData();
     } else {
@@ -144,6 +153,18 @@ export default function AdminCampaignsPage() {
           {campaigns.map((camp) => (
             <div key={camp.id} className="bg-card border border-border rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden flex flex-col justify-between">
               <div>
+                {/* Banner Image */}
+                {camp.imageUrl && (
+                  <div className="h-36 -mx-6 -mt-6 mb-4 overflow-hidden relative group">
+                    <img 
+                      src={camp.imageUrl} 
+                      alt={camp.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+                  </div>
+                )}
+
                 <div className="flex justify-between items-start mb-4">
                   <span className={cn(
                     "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold",
@@ -200,7 +221,7 @@ export default function AdminCampaignsPage() {
       {/* Create New Campaign Modal */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl w-full max-w-lg space-y-6 relative">
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl w-full max-w-lg space-y-5 relative max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border pb-4">
               <h3 className="text-xl font-bold text-foreground">Create New Campaign</h3>
               <button 
@@ -228,6 +249,40 @@ export default function AdminCampaignsPage() {
                   placeholder="e.g. Shambu Community Outreach Blood Drive"
                   className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
                 />
+              </div>
+
+              {/* Campaign Image URL & Presets */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center justify-between">
+                  <span>Campaign Picture / Banner URL</span>
+                  <span className="text-xs text-muted-foreground font-normal">Choose preset or enter URL</span>
+                </label>
+                <div className="relative">
+                  <LinkIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input 
+                    type="url"
+                    value={createForm.imageUrl}
+                    onChange={(e) => setCreateForm({ ...createForm, imageUrl: e.target.value })}
+                    placeholder="https://images.unsplash.com/..."
+                    className="w-full h-11 pl-10 pr-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                {/* Presets */}
+                <div className="grid grid-cols-4 gap-2 pt-1">
+                  {PRESET_CAMPAIGN_IMAGES.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setCreateForm({ ...createForm, imageUrl: preset.url })}
+                      className={cn(
+                        "relative rounded-lg overflow-hidden border-2 h-14 transition-all group",
+                        createForm.imageUrl === preset.url ? "border-primary ring-2 ring-primary/20" : "border-border opacity-70 hover:opacity-100"
+                      )}
+                    >
+                      <img src={preset.url} alt={preset.label} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="space-y-2">
