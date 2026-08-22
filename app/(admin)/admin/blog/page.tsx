@@ -13,7 +13,8 @@ import {
   Loader2,
   X,
   AlertTriangle,
-  FileText
+  Image as ImageIcon,
+  Link as LinkIcon
 } from "lucide-react";
 import { 
   getAdminArticlesData, 
@@ -30,6 +31,13 @@ const CATEGORY_OPTIONS = [
   "Community News"
 ];
 
+const PRESET_IMAGES = [
+  { label: "Blood Bag & Hospital", url: "https://images.unsplash.com/photo-1615461066841-6116e61058f4?auto=format&fit=crop&q=80&w=600" },
+  { label: "Donor Giving Blood", url: "https://images.unsplash.com/photo-1536856136534-bb679c52a9aa?auto=format&fit=crop&q=80&w=600" },
+  { label: "Healthcare Doctor", url: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&q=80&w=600" },
+  { label: "Community Outreach", url: "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&q=80&w=600" },
+];
+
 export default function AdminBlogPage() {
   const [articles, setArticles] = useState<AdminArticleItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,12 +49,14 @@ export default function AdminBlogPage() {
     category: string;
     excerpt: string;
     content: string;
+    coverImageUrl: string;
     status: "Published" | "Draft";
   }>({
     title: "",
     category: "Health & Education",
     excerpt: "",
     content: "",
+    coverImageUrl: PRESET_IMAGES[0].url,
     status: "Published",
   });
   const [isCreateSubmitting, setIsCreateSubmitting] = useState(false);
@@ -59,12 +69,14 @@ export default function AdminBlogPage() {
     category: string;
     excerpt: string;
     content: string;
+    coverImageUrl: string;
     status: "Published" | "Draft";
   }>({
     title: "",
     category: "Health & Education",
     excerpt: "",
     content: "",
+    coverImageUrl: "",
     status: "Published",
   });
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
@@ -106,6 +118,7 @@ export default function AdminBlogPage() {
         category: "Health & Education",
         excerpt: "",
         content: "",
+        coverImageUrl: PRESET_IMAGES[0].url,
         status: "Published",
       });
       loadData();
@@ -122,6 +135,7 @@ export default function AdminBlogPage() {
       category: article.category,
       excerpt: article.excerpt,
       content: article.content,
+      coverImageUrl: article.coverImageUrl || "",
       status: article.status,
     });
   };
@@ -176,7 +190,7 @@ export default function AdminBlogPage() {
           <table className="w-full text-left">
             <thead>
               <tr className="bg-secondary/40 text-muted-foreground text-xs font-bold uppercase tracking-wider">
-                <th className="px-6 py-4">Article Title</th>
+                <th className="px-6 py-4">Article</th>
                 <th className="px-6 py-4">Category</th>
                 <th className="px-6 py-4">Author</th>
                 <th className="px-6 py-4">Publish Date</th>
@@ -203,7 +217,25 @@ export default function AdminBlogPage() {
                 articles.map((article) => (
                   <tr key={article.id} className="hover:bg-secondary/20 transition-colors">
                     <td className="px-6 py-4">
-                      <div className="font-semibold text-sm text-foreground">{article.title}</div>
+                      <div className="flex items-center gap-3">
+                        {article.coverImageUrl ? (
+                          <img 
+                            src={article.coverImageUrl} 
+                            alt={article.title}
+                            className="w-10 h-10 rounded-lg object-cover border border-border shrink-0" 
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground shrink-0">
+                            <ImageIcon className="w-5 h-5" />
+                          </div>
+                        )}
+                        <div>
+                          <div className="font-semibold text-sm text-foreground line-clamp-1">{article.title}</div>
+                          {article.excerpt && (
+                            <div className="text-xs text-muted-foreground line-clamp-1">{article.excerpt}</div>
+                          )}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-secondary text-foreground">
@@ -248,7 +280,7 @@ export default function AdminBlogPage() {
       {/* Create New Article Modal */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl w-full max-w-xl space-y-6 relative">
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl w-full max-w-xl space-y-5 relative max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border pb-4">
               <h3 className="text-xl font-bold text-foreground">Create New Article</h3>
               <button 
@@ -276,6 +308,46 @@ export default function AdminBlogPage() {
                   placeholder="e.g. Why Regular Blood Donation Saves Lives"
                   className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
                 />
+              </div>
+
+              {/* Cover Picture Section */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center justify-between">
+                  <span>Featured Picture / Cover Image URL</span>
+                  <span className="text-xs text-muted-foreground font-normal">Choose preset or enter URL</span>
+                </label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <LinkIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input 
+                      type="url"
+                      value={createForm.coverImageUrl}
+                      onChange={(e) => setCreateForm({ ...createForm, coverImageUrl: e.target.value })}
+                      placeholder="https://images.unsplash.com/..."
+                      className="w-full h-11 pl-10 pr-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+
+                {/* Preset Choices */}
+                <div className="grid grid-cols-4 gap-2 pt-1">
+                  {PRESET_IMAGES.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setCreateForm({ ...createForm, coverImageUrl: preset.url })}
+                      className={cn(
+                        "relative rounded-lg overflow-hidden border-2 h-14 transition-all group",
+                        createForm.coverImageUrl === preset.url ? "border-primary ring-2 ring-primary/20" : "border-border opacity-70 hover:opacity-100"
+                      )}
+                    >
+                      <img src={preset.url} alt={preset.label} className="w-full h-full object-cover" />
+                      <span className="absolute inset-0 bg-black/40 text-[9px] font-bold text-white flex items-center justify-center p-1 text-center line-clamp-2">
+                        {preset.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -318,7 +390,7 @@ export default function AdminBlogPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Article Content</label>
                 <textarea 
-                  rows={5}
+                  rows={4}
                   value={createForm.content}
                   onChange={(e) => setCreateForm({ ...createForm, content: e.target.value })}
                   placeholder="Write the article content here..."
@@ -351,7 +423,7 @@ export default function AdminBlogPage() {
       {/* Edit Article Modal */}
       {editingArticle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl w-full max-w-xl space-y-6 relative">
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl w-full max-w-xl space-y-5 relative max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border pb-4">
               <h3 className="text-xl font-bold text-foreground">Edit Article</h3>
               <button 
@@ -378,6 +450,39 @@ export default function AdminBlogPage() {
                   onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                   className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
                 />
+              </div>
+
+              {/* Cover Picture Section */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center justify-between">
+                  <span>Featured Picture / Cover Image URL</span>
+                </label>
+                <div className="relative">
+                  <LinkIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input 
+                    type="url"
+                    value={editForm.coverImageUrl}
+                    onChange={(e) => setEditForm({ ...editForm, coverImageUrl: e.target.value })}
+                    placeholder="https://images.unsplash.com/..."
+                    className="w-full h-11 pl-10 pr-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                {/* Preset Choices */}
+                <div className="grid grid-cols-4 gap-2 pt-1">
+                  {PRESET_IMAGES.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, coverImageUrl: preset.url })}
+                      className={cn(
+                        "relative rounded-lg overflow-hidden border-2 h-14 transition-all group",
+                        editForm.coverImageUrl === preset.url ? "border-primary ring-2 ring-primary/20" : "border-border opacity-70 hover:opacity-100"
+                      )}
+                    >
+                      <img src={preset.url} alt={preset.label} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -419,7 +524,7 @@ export default function AdminBlogPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Article Content</label>
                 <textarea 
-                  rows={5}
+                  rows={4}
                   value={editForm.content}
                   onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
                   className="w-full p-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
