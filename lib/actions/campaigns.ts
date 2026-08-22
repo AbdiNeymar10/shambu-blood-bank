@@ -546,3 +546,75 @@ export async function getCampaignDetails(campaignId: string): Promise<{
     return null;
   }
 }
+
+export type PublicCampaignItem = {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  formattedDates: string;
+  formattedTime: string;
+  targetUnits: number;
+  status: "Active" | "Upcoming" | "Completed";
+  imageUrl: string;
+};
+
+/**
+ * Fetches all campaigns for public display (events page & homepage preview).
+ */
+export async function getPublicCampaignsList(): Promise<PublicCampaignItem[]> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createClient()) as any;
+
+    const { data: camps, error } = await supabase
+      .from("campaigns")
+      .select("id, title, slug, description, location, start_date, end_date, target_units, image_url")
+      .order("start_date", { ascending: true });
+
+    if (error || !camps) return [];
+
+    const now = new Date();
+
+    return camps.map((c: any) => {
+      const sDateObj = new Date(c.start_date);
+      const eDateObj = new Date(c.end_date);
+      eDateObj.setHours(23, 59, 59, 999);
+
+      let dynamicStatus: "Active" | "Upcoming" | "Completed" = "Upcoming";
+      if (now >= sDateObj && now <= eDateObj) {
+        dynamicStatus = "Active";
+      } else if (now > eDateObj) {
+        dynamicStatus = "Completed";
+      } else {
+        dynamicStatus = "Upcoming";
+      }
+
+      const formattedDates = formatDateRange(c.start_date, c.end_date);
+      const formattedTime = "8:00 AM - 5:00 PM";
+
+      return {
+        id: c.id,
+        title: c.title,
+        slug: c.slug,
+        description: c.description || "Join us for our community blood donation drive. Your contribution saves lives.",
+        location: c.location || "Shambu Blood Bank Center",
+        startDate: c.start_date ? c.start_date.split("T")[0] : "",
+        endDate: c.end_date ? c.end_date.split("T")[0] : "",
+        formattedDates,
+        formattedTime,
+        targetUnits: c.target_units || 100,
+        status: dynamicStatus,
+        imageUrl:
+          c.image_url ||
+          "https://images.unsplash.com/photo-1615461066841-6116e61058f4?auto=format&fit=crop&q=80&w=800",
+      };
+    });
+  } catch (err) {
+    console.error("Error fetching public campaigns list:", err);
+    return [];
+  }
+}
