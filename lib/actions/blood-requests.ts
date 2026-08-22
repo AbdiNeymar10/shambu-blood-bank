@@ -245,7 +245,7 @@ export async function allocateBloodUnits(
     const newStock = availableStock - unitsToAllocate;
     const { error: updateInvErr } = await supabase
       .from("blood_inventory")
-      .update({ units_available: newStock, last_updated: new Date().toISOString() })
+      .update({ units_available: newStock, updated_at: new Date().toISOString() })
       .eq("id", invRecord.id);
 
     if (updateInvErr) {
