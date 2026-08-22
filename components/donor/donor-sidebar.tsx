@@ -11,9 +11,9 @@ import {
   Megaphone,
   Bell,
   Settings,
-  Droplet,
   LogOut,
   Heart,
+  Droplet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logout } from "@/lib/actions/auth";
@@ -34,6 +34,7 @@ const donorSidebarItems = [
 export function DonorSidebar() {
   const pathname = usePathname();
   const [donorName, setDonorName] = useState<string>("Donor");
+  const [bloodGroup, setBloodGroup] = useState<string>("");
   const [eligibility, setEligibility] = useState<EligibilityInfo | null>(null);
 
   useEffect(() => {
@@ -41,18 +42,31 @@ export function DonorSidebar() {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (user) {
         let name = (user.user_metadata?.full_name as string) || "";
-        const { data: profile } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: userRow } = await (supabase as any)
           .from("users")
-          .select("full_name")
+          .select("id, full_name")
           .eq("auth_id", user.id)
           .maybeSingle();
 
-        const userRow = profile as { full_name?: string } | null;
         if (userRow?.full_name) {
           name = userRow.full_name;
         }
 
         setDonorName(name || "Donor User");
+
+        if (userRow?.id) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: dp } = await (supabase as any)
+            .from("donor_profiles")
+            .select("blood_group")
+            .eq("user_id", userRow.id)
+            .maybeSingle();
+
+          if (dp?.blood_group) {
+            setBloodGroup(dp.blood_group);
+          }
+        }
       }
     });
 
@@ -69,7 +83,8 @@ export function DonorSidebar() {
   };
 
   return (
-    <aside className="w-64 bg-card border-r border-border h-screen sticky top-0 flex flex-col shadow-sm hidden md:flex">
+    <aside className="w-64 bg-card border-r border-border h-screen sticky top-0 flex flex-col shadow-sm hidden md:flex shrink-0">
+      {/* Header */}
       <div className="p-6 border-b border-border flex items-center gap-3">
         <div className="bg-primary/10 p-2 rounded-lg">
           <Droplet className="w-6 h-6 text-primary fill-primary" />
@@ -79,43 +94,44 @@ export function DonorSidebar() {
           <p className="text-xs text-muted-foreground font-medium">Donor Portal</p>
         </div>
       </div>
-      
-      <div className="flex-1 overflow-y-auto py-6 px-4">
-        <nav className="space-y-1.5">
+
+      {/* Nav Items & Eligibility Info */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        <div className="space-y-1">
           {donorSidebarItems.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/donor/dashboard" && pathname?.startsWith(item.href)) ||
-              (item.href === "/donor/dashboard" && (pathname === "/donor" || pathname === "/donor/dashboard"));
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
             return (
               <Link
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200",
                   isActive
                     ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
               >
-                <item.icon className={cn("w-5 h-5", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
-                {item.name}
+                <Icon className="w-4 h-4" />
+                <span>{item.name}</span>
               </Link>
             );
           })}
-        </nav>
+        </div>
 
-        <div className="mt-8 p-4 bg-primary/5 rounded-xl border border-primary/10">
-          <div className="flex items-center gap-2 mb-2">
-            <Heart className="w-4 h-4 text-primary fill-primary" />
-            <span className="text-xs font-semibold text-primary uppercase tracking-wider">Next Eligibility</span>
+        {/* Eligibility Quick Status Card */}
+        <div className="p-4 rounded-2xl bg-secondary/50 border border-border space-y-2">
+          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+            <Heart className="w-3.5 h-3.5 text-primary" />
+            <span>Next Donation Status</span>
           </div>
+
           {eligibility ? (
             eligibility.isEligible ? (
               <>
-                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">Eligible Now!</p>
-                <p className="text-[10px] text-muted-foreground mt-1">Ready to donate today</p>
-                <div className="w-full bg-secondary h-1.5 rounded-full mt-2 overflow-hidden">
+                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">Eligible Today!</p>
+                <p className="text-[10px] text-muted-foreground mt-1">You are clear to schedule your next blood donation.</p>
+                <div className="w-full bg-emerald-500/20 h-1.5 rounded-full mt-2 overflow-hidden">
                   <div className="bg-emerald-500 h-full w-full" />
                 </div>
               </>
@@ -138,15 +154,18 @@ export function DonorSidebar() {
         </div>
       </div>
 
-      <div className="p-4 border-t border-border">
-        <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg group">
+      {/* Footer Profile Card */}
+      <div className="p-4 border-t border-border bg-card">
+        <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-xl group border border-border/50">
           <div className="flex items-center gap-3 overflow-hidden min-w-0">
             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
               {getInitials(donorName)}
             </div>
             <div className="overflow-hidden min-w-0">
-              <p className="text-sm font-medium truncate">{donorName}</p>
-              <p className="text-[10px] text-muted-foreground truncate uppercase font-bold tracking-tight">O Positive (O+)</p>
+              <p className="text-sm font-bold truncate text-foreground">{donorName}</p>
+              <p className="text-[10px] text-muted-foreground truncate uppercase font-bold tracking-tight">
+                {bloodGroup ? `Blood Type: ${bloodGroup}` : "Registered Donor"}
+              </p>
             </div>
           </div>
           <button
