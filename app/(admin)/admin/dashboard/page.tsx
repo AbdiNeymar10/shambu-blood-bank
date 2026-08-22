@@ -1,5 +1,3 @@
-"use client";
-
 import { 
   Users, 
   Droplet, 
@@ -11,30 +9,15 @@ import {
   Clock,
   AlertCircle
 } from "lucide-react";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  Cell
-} from "recharts";
-import { 
-  summaryStats, 
-  bloodStockData, 
-  donationTrends, 
-  recentRequests, 
-  emergencyAlerts 
-} from "@/lib/admin-mock-data";
+import { getAdminDashboardData } from "@/lib/actions/dashboard";
+import { BloodStockChart } from "./components/blood-stock-chart";
+import { DonationTrendsChart } from "./components/donation-trends-chart";
 import { cn } from "@/lib/utils";
 
-const COLORS = ['#ef4444', '#f87171', '#dc2626', '#b91c1c', '#991b1b', '#7f1d1d', '#fca5a5', '#fee2e2'];
+export default async function AdminDashboardPage() {
+  const data = await getAdminDashboardData();
+  const { stats, bloodStockData, recentRequests, emergencyAlerts, donationTrends, monthlyGrowth } = data;
 
-export default function AdminDashboardPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header Section */}
@@ -47,34 +30,34 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           title="Total Registered Donors" 
-          value={summaryStats.totalDonors} 
+          value={stats.totalDonors} 
           icon={Users} 
-          trend="+12% from last month" 
+          trend="Registered Donors" 
           trendType="up"
           color="blue"
         />
         <StatCard 
           title="Pending Requests" 
-          value={summaryStats.pendingRequests} 
+          value={stats.pendingRequests} 
           icon={FileText} 
-          trend="+4 new since morning" 
+          trend="Awaiting fulfillment" 
           trendType="neutral"
           color="orange"
         />
         <StatCard 
           title="Available Blood Units" 
-          value={summaryStats.availableBloodUnits} 
+          value={stats.availableBloodUnits} 
           icon={Droplet} 
-          trend="-2% from yesterday" 
-          trendType="down"
+          trend="Units in inventory" 
+          trendType="neutral"
           color="red"
         />
         <StatCard 
           title="Active Campaigns" 
-          value={summaryStats.activeCampaigns} 
+          value={stats.activeCampaigns} 
           icon={TrendingUp} 
-          trend="2 drives concluding soon" 
-          trendType="neutral"
+          trend="Active blood drives" 
+          trendType="up"
           color="green"
         />
       </div>
@@ -94,36 +77,7 @@ export default function AdminDashboardPage() {
               </button>
             </div>
             <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={bloodStockData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="group" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12, fontWeight: 500 }}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12, fontWeight: 500 }}
-                  />
-                  <Tooltip 
-                    cursor={{ fill: 'hsl(var(--secondary))', opacity: 0.4 }}
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      borderColor: 'hsl(var(--border))',
-                      borderRadius: '12px',
-                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                    }}
-                  />
-                  <Bar dataKey="units" radius={[6, 6, 0, 0]}>
-                    {bloodStockData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <BloodStockChart data={bloodStockData} />
             </div>
           </div>
 
@@ -147,29 +101,37 @@ export default function AdminDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {recentRequests.map((request) => (
-                    <tr key={request.id} className="hover:bg-secondary/10 transition-colors group">
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-sm">{request.patientName}</div>
-                        <div className="text-xs text-muted-foreground">{request.hospital}</div>
-                      </td>
-                      <td className="px-6 py-4 font-bold text-primary">{request.bloodGroup}</td>
-                      <td className="px-6 py-4 text-sm font-medium">{request.units} Units</td>
-                      <td className="px-6 py-4">
-                        <span className={cn(
-                          "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold",
-                          request.priority === "Critical" ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" :
-                          request.priority === "Urgent" ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400" :
-                          "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
-                        )}>
-                          {request.priority}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <StatusBadge status={request.status} />
+                  {recentRequests.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-sm text-muted-foreground">
+                        No blood requests found.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    recentRequests.map((request) => (
+                      <tr key={request.id} className="hover:bg-secondary/10 transition-colors group">
+                        <td className="px-6 py-4">
+                          <div className="font-semibold text-sm">{request.patientName}</div>
+                          <div className="text-xs text-muted-foreground">{request.hospital}</div>
+                        </td>
+                        <td className="px-6 py-4 font-bold text-primary">{request.bloodGroup}</td>
+                        <td className="px-6 py-4 text-sm font-medium">{request.units} Units</td>
+                        <td className="px-6 py-4">
+                          <span className={cn(
+                            "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold",
+                            request.priority === "Critical" || request.priority === "Emergency" ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" :
+                            request.priority === "Urgent" || request.priority === "High" ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400" :
+                            "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
+                          )}>
+                            {request.priority}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <StatusBadge status={request.status} />
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -187,17 +149,23 @@ export default function AdminDashboardPage() {
               <h3 className="text-lg font-bold">Emergency Shortage Alerts</h3>
             </div>
             <div className="space-y-4">
-              {emergencyAlerts.map((alert) => (
-                <div key={alert.id} className="p-4 rounded-xl bg-secondary/50 border border-border space-y-2 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-destructive"></div>
-                  <div className="flex justify-between items-start">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-destructive">{alert.type}</span>
-                    <span className="text-[10px] text-muted-foreground">{alert.timestamp}</span>
-                  </div>
-                  <h4 className="text-sm font-bold">{alert.bloodGroup} Shortage</h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{alert.message}</p>
+              {emergencyAlerts.length === 0 ? (
+                <div className="p-4 rounded-xl bg-secondary/30 border border-border text-center">
+                  <p className="text-xs text-muted-foreground">No active blood shortage alerts.</p>
                 </div>
-              ))}
+              ) : (
+                emergencyAlerts.map((alert) => (
+                  <div key={alert.id} className="p-4 rounded-xl bg-secondary/50 border border-border space-y-2 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-destructive"></div>
+                    <div className="flex justify-between items-start">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-destructive">{alert.type}</span>
+                      <span className="text-[10px] text-muted-foreground">{alert.timestamp}</span>
+                    </div>
+                    <h4 className="text-sm font-bold">{alert.bloodGroup} Shortage</h4>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{alert.message}</p>
+                  </div>
+                ))
+              )}
             </div>
             <button className="w-full mt-6 py-3 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
               Broadcast Emergency Outreach
@@ -208,28 +176,7 @@ export default function AdminDashboardPage() {
           <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
             <h3 className="text-lg font-bold mb-6">Monthly Donation Trends</h3>
             <div className="h-[200px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={donationTrends}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                  <XAxis dataKey="month" hide />
-                  <YAxis hide />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      borderColor: 'hsl(var(--border))',
-                      borderRadius: '12px',
-                    }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="donations" 
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={4}
-                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4, stroke: 'hsl(var(--card))' }}
-                    activeDot={{ r: 6, strokeWidth: 0 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <DonationTrendsChart data={donationTrends} />
             </div>
             <div className="mt-4 flex items-center justify-between pt-4 border-t border-border">
               <div className="flex items-center gap-2">
@@ -238,7 +185,14 @@ export default function AdminDashboardPage() {
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">Monthly Growth</div>
-                  <div className="text-sm font-bold text-green-700 dark:text-green-400">+24.8%</div>
+                  <div className={cn(
+                    "text-sm font-bold",
+                    monthlyGrowth.startsWith("-") 
+                      ? "text-red-700 dark:text-red-400" 
+                      : "text-green-700 dark:text-green-400"
+                  )}>
+                    {monthlyGrowth}
+                  </div>
                 </div>
               </div>
               <a href="/admin/reports" className="text-xs font-bold text-primary hover:underline">Full Report</a>
