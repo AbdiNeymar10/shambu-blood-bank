@@ -1,467 +1,437 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import type { BloodGroup } from "@/types/database.types";
 
 export type AppointmentStatus =
-  | "pending"
   | "scheduled"
-  | "approved"
   | "confirmed"
   | "completed"
   | "cancelled"
+  | "no_show"
+  | "approved"
+  | "pending"
   | "rejected";
+
+export type AppointmentItem = {
+  id: string;
+  donorName: string;
+  bloodGroup: string;
+  date: string;
+  time: string;
+  center: string;
+  status: string;
+  phone: string;
+  appointmentDateRaw: string;
+};
 
 export type AppointmentRecord = {
   id: string;
-  donorId: string;
-  hospitalId: string;
-  hospitalName: string;
-  hospitalAddress?: string;
+  donor_id: string;
+  hospital_id: string;
+  appointment_date: string;
   appointmentDate: string;
+  status: AppointmentStatus;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  hospitalName: string;
+  hospitalAddress: string;
   formattedDate: string;
   formattedTime: string;
-  status: AppointmentStatus;
-  notes?: string;
-  createdAt: string;
-  isMock?: boolean;
+  hospitals?: {
+    name: string;
+    address: string;
+    city: string;
+    phone: string;
+  } | null;
 };
 
 export type HospitalItem = {
   id: string;
   name: string;
+  code: string;
   address: string;
   city: string;
+  phone: string;
 };
 
-/** Simple UUID v4 format check */
-function isUUID(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-}
-
-/** Seed data – used to populate the DB if the hospitals table is empty */
-const SEED_HOSPITALS = [
-  {
-    name: "Shambu General Hospital Blood Bank",
-    code: "SGH-001",
-    phone: "+251577780001",
-    address: "Kebele 01, Main Hospital Road",
-    city: "Shambu",
-    is_verified: true,
-  },
-  {
-    name: "Horo Guduru Primary Health Center",
-    code: "HGP-002",
-    phone: "+251577780002",
-    address: "Central Market Area",
-    city: "Shambu",
-    is_verified: true,
-  },
-  {
-    name: "Fincha Valley Medical Center",
-    code: "FVM-003",
-    phone: "+251577780003",
-    address: "Fincha Sugar Estate Road",
-    city: "Fincha",
-    is_verified: true,
-  },
-];
-
-const MOCK_APPOINTMENTS: AppointmentRecord[] = [
-  {
-    id: "apt-101",
-    donorId: "mock-donor-1",
-    hospitalId: "hosp-1",
-    hospitalName: "Shambu General Hospital Blood Bank",
-    hospitalAddress: "Kebele 01, Main Hospital Road",
-    appointmentDate: "2026-08-15T10:00:00Z",
-    formattedDate: "August 15, 2026",
-    formattedTime: "10:00 AM",
-    status: "confirmed",
-    notes: "Regular donation slot - 450ml Whole Blood",
-    createdAt: new Date().toISOString(),
-    isMock: true,
-  },
-];
+export type AdminAppointmentsData = {
+  stats: {
+    todaysAppointments: number;
+    completedToday: number;
+    pendingConfirmation: number;
+  };
+  appointments: AppointmentItem[];
+};
 
 /**
- * Fetches available hospitals list for booking
+ * Fetches all metrics and upcoming appointments for the Admin Appointments page from Supabase.
  */
-export async function getHospitals(): Promise<HospitalItem[]> {
+export async function getAdminAppointmentsData(): Promise<AdminAppointmentsData> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = await createClient() as any;
+    const supabase = (await createClient()) as any;
 
-    // 1. Try to fetch existing hospitals
-    const { data, error } = await supabase
-      .from("hospitals")
-      .select("id, name, address, city")
-      .eq("is_verified", true)
-      .order("name", { ascending: true });
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
-    if (!error && data && data.length > 0) {
-      return (data as HospitalItem[]).map((h: HospitalItem) => ({
-        id: h.id,
-        name: h.name,
-        address: h.address || "Shambu Town",
-        city: h.city || "Shambu",
-      }));
-    }
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
 
-    // 2. Table is empty – seed it so real UUIDs exist
-    const { data: seeded, error: seedErr } = await supabase
-      .from("hospitals")
-      .upsert(SEED_HOSPITALS, { onConflict: "code" })
-      .select("id, name, address, city");
+    const [
+      todaysAppointmentsRes,
+      completedTodayRes,
+      pendingConfirmationRes,
+      upcomingScheduleRes,
+    ] = await Promise.all([
+      // 1. Today's appointments count
+      supabase
+        .from("appointments")
+        .select("*", { count: "exact", head: true })
+        .gte("appointment_date", todayStart.toISOString())
+        .lte("appointment_date", todayEnd.toISOString()),
 
-    if (!seedErr && seeded && seeded.length > 0) {
-      return (seeded as HospitalItem[]).map((h: HospitalItem) => ({
-        id: h.id,
-        name: h.name,
-        address: h.address || "Shambu Town",
-        city: h.city || "Shambu",
-      }));
-    }
+      // 2. Completed today count
+      supabase
+        .from("appointments")
+        .select("*", { count: "exact", head: true })
+        .gte("appointment_date", todayStart.toISOString())
+        .lte("appointment_date", todayEnd.toISOString())
+        .eq("status", "completed"),
 
-    // 3. Seed also failed – return empty so the UI can show a message
-    return [];
-  } catch {
-    return [];
+      // 3. Pending confirmation count (scheduled)
+      supabase
+        .from("appointments")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "scheduled"),
+
+      // 4. Upcoming appointment schedule (top 5)
+      supabase
+        .from("appointments")
+        .select("id, appointment_date, status, notes, donor_profiles(id, blood_group, users(full_name, phone)), hospitals(name)")
+        .order("appointment_date", { ascending: true })
+        .limit(5),
+    ]);
+
+    const todaysAppointments = todaysAppointmentsRes.count ?? 0;
+    const completedToday = completedTodayRes.count ?? 0;
+    const pendingConfirmation = pendingConfirmationRes.count ?? 0;
+
+    const rows = upcomingScheduleRes.data || [];
+    const appointments: AppointmentItem[] = rows.map((row: any) => {
+      const donorProfile = Array.isArray(row.donor_profiles)
+        ? row.donor_profiles[0]
+        : row.donor_profiles;
+
+      const user = donorProfile?.users
+        ? Array.isArray(donorProfile.users)
+          ? donorProfile.users[0]
+          : donorProfile.users
+        : null;
+
+      const hospital = Array.isArray(row.hospitals)
+        ? row.hospitals[0]
+        : row.hospitals;
+
+      const dateObj = row.appointment_date
+        ? new Date(row.appointment_date)
+        : new Date();
+
+      const dateFormatted = dateObj.toISOString().split("T")[0];
+      const timeFormatted = dateObj.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      const rawStatus = (row.status || "scheduled").toString();
+      const statusFormatted =
+        rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
+
+      return {
+        id: row.id,
+        donorName: user?.full_name || "Anonymous Donor",
+        bloodGroup: donorProfile?.blood_group || "O+",
+        date: dateFormatted,
+        time: timeFormatted,
+        center: hospital?.name || "Shambu Center",
+        status: statusFormatted,
+        phone: user?.phone || "N/A",
+        appointmentDateRaw: row.appointment_date || "",
+      };
+    });
+
+    return {
+      stats: {
+        todaysAppointments,
+        completedToday,
+        pendingConfirmation,
+      },
+      appointments,
+    };
+  } catch (error) {
+    console.error("Error fetching admin appointments data from Supabase:", error);
+    return {
+      stats: {
+        todaysAppointments: 0,
+        completedToday: 0,
+        pendingConfirmation: 0,
+      },
+      appointments: [],
+    };
   }
 }
 
 /**
- * Fetches appointments for the currently logged-in donor only
+ * Updates an appointment status to 'completed' (Process Check-in).
  */
+export async function processAppointmentCheckIn(appointmentId: string) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createClient()) as any;
+    const { error } = await supabase
+      .from("appointments")
+      .update({ status: "completed" })
+      .eq("id", appointmentId);
+
+    if (error) {
+      console.error("Check-in error:", error);
+      return { success: false, error: "Failed to process check-in." };
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error("Unexpected error in processAppointmentCheckIn:", err);
+    return { success: false, error: "An unexpected error occurred." };
+  }
+}
+
+/**
+ * Books a new donor appointment in Supabase.
+ */
+export async function bookAdminAppointment(input: {
+  donorId: string;
+  hospitalId: string;
+  date: string;
+  time?: string;
+  notes?: string;
+}) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createClient()) as any;
+
+    const dateTimeStr = input.time
+      ? `${input.date}T${input.time}:00`
+      : `${input.date}T09:00:00`;
+
+    const apptDateObj = new Date(dateTimeStr);
+    if (isNaN(apptDateObj.getTime())) {
+      return { success: false, error: "Invalid appointment date or time." };
+    }
+
+    const { error } = await supabase.from("appointments").insert({
+      donor_id: input.donorId,
+      hospital_id: input.hospitalId,
+      appointment_date: apptDateObj.toISOString(),
+      status: "scheduled",
+      notes: input.notes || "Booked by Admin",
+    });
+
+    if (error) {
+      console.error("Booking error:", error);
+      return { success: false, error: "Failed to book appointment." };
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error("Unexpected error in bookAdminAppointment:", err);
+    return { success: false, error: "An unexpected error occurred." };
+  }
+}
+
+/**
+ * Fetches available donors and hospitals for the admin appointment booking modal.
+ */
+export async function getBookingOptions() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createClient()) as any;
+
+    const [donorsRes, hospitalsRes] = await Promise.all([
+      supabase
+        .from("donor_profiles")
+        .select("id, blood_group, users(full_name, phone, email)")
+        .limit(50),
+      supabase.from("hospitals").select("id, name").limit(50),
+    ]);
+
+    const donors = (donorsRes.data || []).map((d: any) => {
+      const u = Array.isArray(d.users) ? d.users[0] : d.users;
+      return {
+        id: d.id,
+        name: u?.full_name || "Unknown Donor",
+        phone: u?.phone || "",
+        email: u?.email || "",
+        bloodGroup: d.blood_group,
+      };
+    });
+
+    const hospitals = (hospitalsRes.data || []).map((h: any) => ({
+      id: h.id,
+      name: h.name,
+    }));
+
+    return { donors, hospitals };
+  } catch (err) {
+    console.error("Error fetching booking options:", err);
+    return { donors: [], hospitals: [] };
+  }
+}
+
+// ============================================================================
+// DONOR PORTAL ACTIONS
+// ============================================================================
+
 export async function getDonorAppointments(): Promise<{
   appointments: AppointmentRecord[];
   usingMock: boolean;
 }> {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return { appointments: MOCK_APPOINTMENTS, usingMock: true };
-    }
-
-    // 1. Get user id from public.users
-    const { data: userRow } = await supabase
-      .from("users")
-      .select("id")
-      .eq("auth_id", user.id)
-      .maybeSingle();
-
-    const userId = (userRow as { id?: string } | null)?.id;
-    if (!userId) {
-      return { appointments: MOCK_APPOINTMENTS, usingMock: true };
-    }
-
-    // 2. Get donor profile id
-    const { data: profileRow } = await supabase
-      .from("donor_profiles")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    const donorProfileId = (profileRow as { id?: string } | null)?.id;
-    if (!donorProfileId) {
-      return { appointments: MOCK_APPOINTMENTS, usingMock: true };
-    }
-
-    // 3. Query appointments for this donor only
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const supabase = (await createClient()) as any;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { appointments: [], usingMock: false };
+
+    const { data: userRow } = await supabase
+      .from("users").select("id").eq("auth_id", user.id).maybeSingle();
+    if (!userRow?.id) return { appointments: [], usingMock: false };
+
+    const { data: profile } = await supabase
+      .from("donor_profiles").select("id").eq("user_id", userRow.id).maybeSingle();
+    if (!profile?.id) return { appointments: [], usingMock: false };
+
+    const { data, error } = await supabase
       .from("appointments")
-      .select(`
-        id,
-        donor_id,
-        hospital_id,
-        appointment_date,
-        status,
-        notes,
-        created_at,
-        hospitals ( id, name, address, city )
-      `)
-      .eq("donor_id", donorProfileId)
+      .select("*, hospitals(name, address, city, phone)")
+      .eq("donor_id", profile.id)
       .order("appointment_date", { ascending: false });
 
-    if (error || !data || data.length === 0) {
-      return { appointments: MOCK_APPOINTMENTS, usingMock: true };
-    }
+    if (error || !data) return { appointments: [], usingMock: false };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const records: AppointmentRecord[] = data.map((item: any) => {
-      const dt = new Date(item.appointment_date);
-      const formattedDate = isNaN(dt.getTime())
-        ? "Invalid Date"
-        : dt.toLocaleDateString("en-US", {
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          });
-      const formattedTime = isNaN(dt.getTime())
-        ? "10:00 AM"
-        : dt.toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
+    const appointments: AppointmentRecord[] = data.map((item: any) => {
+      const dObj = new Date(item.appointment_date);
+      const hospitalObj = Array.isArray(item.hospitals)
+        ? item.hospitals[0]
+        : item.hospitals;
 
       return {
         id: item.id,
-        donorId: item.donor_id,
-        hospitalId: item.hospital_id,
-        hospitalName:
-          item.hospitals?.name || "Shambu General Hospital Blood Bank",
-        hospitalAddress: item.hospitals?.address || "Shambu Town",
+        donor_id: item.donor_id,
+        hospital_id: item.hospital_id,
+        appointment_date: item.appointment_date,
         appointmentDate: item.appointment_date,
-        formattedDate,
-        formattedTime,
-        status: (item.status || "pending").toLowerCase() as AppointmentStatus,
-        notes: item.notes || undefined,
-        createdAt: item.created_at,
-        isMock: false,
+        status: item.status as AppointmentStatus,
+        notes: item.notes,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        hospitalName: hospitalObj?.name || "Shambu Blood Bank",
+        hospitalAddress: hospitalObj?.address || "Shambu",
+        formattedDate: dObj.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+        formattedTime: dObj.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+        hospitals: hospitalObj,
       };
     });
 
-    return { appointments: records, usingMock: false };
-  } catch (err) {
-    console.error("Error loading donor appointments:", err);
-    return { appointments: MOCK_APPOINTMENTS, usingMock: true };
+    return { appointments, usingMock: false };
+  } catch {
+    return { appointments: [], usingMock: false };
   }
 }
 
-/**
- * Creates a new appointment booking for the authenticated donor
- */
+export async function getHospitals(): Promise<HospitalItem[]> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createClient()) as any;
+    const { data } = await supabase.from("hospitals").select("*");
+    return (data || []) as HospitalItem[];
+  } catch {
+    return [];
+  }
+}
+
 export async function createAppointment(
-  hospitalId: string,
-  dateStr: string,
-  timeStr: string,
+  hospital_id: string,
+  date: string,
+  time?: string,
   notes?: string
-): Promise<{ success: boolean; error?: string; appointment?: AppointmentRecord }> {
-  if (!hospitalId) {
-    return { success: false, error: "Please select a donation center/hospital." };
-  }
-
-  // Guard: hospital_id must be a real UUID (not a seed/mock fallback)
-  if (!isUUID(hospitalId)) {
-    return {
-      success: false,
-      error:
-        "The selected hospital is not yet registered in the system. Please refresh the page and try again.",
-    };
-  }
-
-  if (!dateStr) {
-    return { success: false, error: "Please select an appointment date." };
-  }
-
-  if (!timeStr) {
-    return { success: false, error: "Please select a time slot." };
-  }
-
-  // Combine date and time
-  const fullDateTimeStr = `${dateStr}T${timeStr}:00`;
-  const bookingDate = new Date(fullDateTimeStr);
-
-  if (isNaN(bookingDate.getTime())) {
-    return { success: false, error: "Invalid date or time selected." };
-  }
-
-  const now = new Date();
-  if (bookingDate < now) {
-    return { success: false, error: "Appointment date must be in the future." };
-  }
-
+): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createClient()) as any;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: "Not authenticated" };
 
-    if (!user) {
-      return { success: false, error: "You must be signed in to book an appointment." };
-    }
-
-    // Get user id
     const { data: userRow } = await supabase
-      .from("users")
-      .select("id")
-      .eq("auth_id", user.id)
-      .maybeSingle();
+      .from("users").select("id").eq("auth_id", user.id).maybeSingle();
+    if (!userRow?.id) return { success: false, error: "User profile not found" };
 
-    const userId = (userRow as { id?: string } | null)?.id;
-    if (!userId) {
-      return { success: false, error: "User profile not found. Please complete registration." };
-    }
+    const { data: profile } = await supabase
+      .from("donor_profiles").select("id").eq("user_id", userRow.id).maybeSingle();
+    if (!profile?.id) return { success: false, error: "Donor profile not found" };
 
-    // Get donor profile id
-    const { data: profileRow } = await supabase
-      .from("donor_profiles")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
+    const dateTimeStr = time ? `${date}T${time}:00` : `${date}T09:00:00`;
+    const apptDateIso = new Date(dateTimeStr).toISOString();
 
-    let donorProfileId = (profileRow as { id?: string } | null)?.id;
+    const { error } = await supabase.from("appointments").insert({
+      donor_id: profile.id,
+      hospital_id: hospital_id,
+      appointment_date: apptDateIso,
+      notes: notes || null,
+      status: "scheduled",
+    });
 
-    // Create donor profile if missing
-    if (!donorProfileId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: newProfile, error: profileErr } = await (supabase as any)
-        .from("donor_profiles")
-        .upsert(
-          [
-            {
-              user_id: userId,
-              blood_group: "O+",
-              date_of_birth: "1995-01-01",
-              city: "Shambu",
-            },
-          ],
-          { onConflict: "user_id" }
-        )
-        .select("id")
-        .maybeSingle();
-
-      if (profileErr) {
-        return { success: false, error: "Failed to locate or create donor profile." };
-      }
-      donorProfileId = (newProfile as { id?: string } | null)?.id;
-    }
-
-    if (!donorProfileId) {
-      return { success: false, error: "Donor profile ID unavailable." };
-    }
-
-    // Insert appointment record
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: newApt, error: insertError } = await (supabase as any)
-      .from("appointments")
-      .insert([
-        {
-          donor_id: donorProfileId,
-          hospital_id: hospitalId,
-          appointment_date: bookingDate.toISOString(),
-          status: "scheduled",
-          notes: notes || null,
-        },
-      ])
-      .select("id, appointment_date, status, notes, created_at")
-      .single();
-
-    if (insertError) {
-      console.error("Insert appointment error:", insertError);
-      return { success: false, error: insertError.message || "Failed to book appointment." };
-    }
-
-    revalidatePath("/donor/appointments");
-
-    return {
-      success: true,
-      appointment: {
-        id: newApt.id,
-        donorId: donorProfileId,
-        hospitalId,
-        hospitalName: "Requested Hospital Center",
-        appointmentDate: newApt.appointment_date,
-        formattedDate: bookingDate.toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-        }),
-        formattedTime: bookingDate.toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        status: "scheduled",
-        notes: notes || undefined,
-        createdAt: newApt.created_at,
-      },
-    };
-  } catch (err: any) {
-    console.error("Book appointment error:", err);
-    return { success: false, error: err?.message || "An error occurred while booking." };
-  }
-}
-
-/**
- * Cancels an appointment for the authenticated donor
- */
-export async function cancelAppointment(
-  appointmentId: string
-): Promise<{ success: boolean; error?: string }> {
-  if (!appointmentId) {
-    return { success: false, error: "Appointment ID is required." };
-  }
-
-  try {
-    const supabase = await createClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
-      .from("appointments")
-      .update({ status: "cancelled", updated_at: new Date().toISOString() })
-      .eq("id", appointmentId);
-
-    if (error) {
-      return { success: false, error: error.message || "Failed to cancel appointment." };
-    }
-
-    revalidatePath("/donor/appointments");
+    if (error) return { success: false, error: error.message };
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err?.message || "An unexpected error occurred." };
+    return { success: false, error: err.message };
   }
 }
 
-/**
- * Reschedules an appointment to a new date and time
- */
+export async function cancelAppointment(id: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createClient()) as any;
+    const { error } = await supabase
+      .from("appointments")
+      .update({ status: "cancelled" })
+      .eq("id", id);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function rescheduleAppointment(
-  appointmentId: string,
-  dateStr: string,
-  timeStr: string
+  id: string,
+  newDate: string,
+  newTime?: string
 ): Promise<{ success: boolean; error?: string }> {
-  if (!appointmentId) {
-    return { success: false, error: "Appointment ID is required." };
-  }
-
-  if (!dateStr || !timeStr) {
-    return { success: false, error: "Please select a valid new date and time." };
-  }
-
-  const fullDateTimeStr = `${dateStr}T${timeStr}:00`;
-  const newDate = new Date(fullDateTimeStr);
-
-  if (isNaN(newDate.getTime())) {
-    return { success: false, error: "Invalid date or time." };
-  }
-
-  if (newDate < new Date()) {
-    return { success: false, error: "Rescheduled date must be in the future." };
-  }
-
   try {
-    const supabase = await createClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const supabase = (await createClient()) as any;
+    const dateTimeStr = newTime ? `${newDate}T${newTime}:00` : `${newDate}T09:00:00`;
+    const apptDateIso = new Date(dateTimeStr).toISOString();
+
+    const { error } = await supabase
       .from("appointments")
-      .update({
-        appointment_date: newDate.toISOString(),
-        status: "scheduled",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", appointmentId);
+      .update({ appointment_date: apptDateIso, status: "scheduled" })
+      .eq("id", id);
 
-    if (error) {
-      return { success: false, error: error.message || "Failed to reschedule appointment." };
-    }
-
-    revalidatePath("/donor/appointments");
+    if (error) return { success: false, error: error.message };
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err?.message || "An error occurred while rescheduling." };
+    return { success: false, error: err.message };
   }
 }
