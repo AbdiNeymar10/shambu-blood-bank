@@ -166,6 +166,19 @@ export async function markAllNotificationsRead(): Promise<{ success: boolean; er
   return { success: true };
 }
 
+function extractBloodGroupFromAudience(audience: string): string | null {
+  const norm = audience.toUpperCase();
+  if (norm.includes("AB+")) return "AB+";
+  if (norm.includes("AB-")) return "AB-";
+  if (norm.includes("A+")) return "A+";
+  if (norm.includes("A-")) return "A-";
+  if (norm.includes("B+")) return "B+";
+  if (norm.includes("B-")) return "B-";
+  if (norm.includes("O+")) return "O+";
+  if (norm.includes("O-")) return "O-";
+  return null;
+}
+
 /**
  * Admin server action: Dispatches a broadcast alert to targeted donors in Supabase.
  */
@@ -213,17 +226,7 @@ export async function dispatchBroadcastAlert(input: {
         .ilike("city", "%Shambu%");
       recipientUserIds = Array.from(new Set((donorProfiles || []).map((d: any) => d.user_id).filter(Boolean)));
     } else {
-      // Extract blood group from audience string
-      let bgMatch = "";
-      if (audience.startsWith("A+")) bgMatch = "A+";
-      else if (audience.startsWith("A-")) bgMatch = "A-";
-      else if (audience.startsWith("B+")) bgMatch = "B+";
-      else if (audience.startsWith("B-")) bgMatch = "B-";
-      else if (audience.startsWith("AB+")) bgMatch = "AB+";
-      else if (audience.startsWith("AB-")) bgMatch = "AB-";
-      else if (audience.startsWith("O+")) bgMatch = "O+";
-      else if (audience.startsWith("O-")) bgMatch = "O-";
-
+      const bgMatch = extractBloodGroupFromAudience(audience);
       if (bgMatch) {
         const { data: donorProfiles } = await supabase
           .from("donor_profiles")
@@ -234,10 +237,10 @@ export async function dispatchBroadcastAlert(input: {
     }
 
     if (recipientUserIds.length === 0) {
-      return { success: false, error: `No registered donors found matching "${audience}".` };
+      return { success: false, error: `No registered donors found matching target audience "${audience}".` };
     }
 
-    // 2. Batch Insert Notifications
+    // 2. Batch Insert Notifications with audience metadata in link field
     const nowIso = new Date().toISOString();
 
     const notifRows = recipientUserIds.map((uid) => ({
@@ -245,6 +248,7 @@ export async function dispatchBroadcastAlert(input: {
       title,
       message,
       type: "emergency_alert",
+      link: `audience:${audience}`,
       is_read: false,
       created_at: nowIso,
     }));
@@ -276,21 +280,32 @@ export async function getAdminNotificationLogs(): Promise<AdminNotificationLog[]
 
     const { data: rows, error } = await supabase
       .from("notifications")
-      .select("id, title, type, created_at, user_id")
+      .select("id, title, type, link, created_at, user_id")
       .order("created_at", { ascending: false });
 
     if (error || !rows || rows.length === 0) return [];
 
     // Group rows by Title + Created Minute to represent distinct Broadcast dispatches
-    const groupedMap = new Map<string, { title: string; type: string; date: string; count: number; rawType: string }>();
+    const groupedMap = new Map<
+      string,
+      { title: string; type: string; date: string; count: number; rawType: string; audience: string }
+    >();
 
     rows.forEach((r: any) => {
       const dateKey = r.created_at ? r.created_at.substring(0, 16) : "now";
       const groupKey = `${r.title}___${dateKey}`;
 
+      let audienceFromLink = "";
+      if (r.link && typeof r.link === "string" && r.link.startsWith("audience:")) {
+        audienceFromLink = r.link.replace("audience:", "");
+      }
+
       if (groupedMap.has(groupKey)) {
         const existing = groupedMap.get(groupKey)!;
         existing.count += 1;
+        if (!existing.audience && audienceFromLink) {
+          existing.audience = audienceFromLink;
+        }
       } else {
         const dObj = r.created_at ? new Date(r.created_at) : new Date();
         const dateStr = dObj.toLocaleString("en-US", {
@@ -308,6 +323,7 @@ export async function getAdminNotificationLogs(): Promise<AdminNotificationLog[]
           date: dateStr,
           count: 1,
           rawType: r.type || "emergency_alert",
+          audience: audienceFromLink,
         });
       }
     });
@@ -325,17 +341,12 @@ export async function getAdminNotificationLogs(): Promise<AdminNotificationLog[]
         typeLabel = "System Alert";
       }
 
-      let audienceLabel = "All Registered Donors";
-      const tLower = val.title.toLowerCase();
-      if (tLower.includes("o-")) audienceLabel = "O- Negative Donors";
-      else if (tLower.includes("o+")) audienceLabel = "O+ Positive Donors";
-      else if (tLower.includes("a-")) audienceLabel = "A- Negative Donors";
-      else if (tLower.includes("a+")) audienceLabel = "A+ Positive Donors";
-      else if (tLower.includes("b-")) audienceLabel = "B- Negative Donors";
-      else if (tLower.includes("b+")) audienceLabel = "B+ Positive Donors";
-      else if (tLower.includes("ab-")) audienceLabel = "AB- Negative Donors";
-      else if (tLower.includes("ab+")) audienceLabel = "AB+ Positive Donors";
-      else if (tLower.includes("shambu")) audienceLabel = "Shambu City Donors";
+      let audienceLabel = val.audience || "All Registered Donors";
+      if (!val.audience) {
+        const bg = extractBloodGroupFromAudience(val.title);
+        if (bg) audienceLabel = `${bg} Donors`;
+        else if (val.title.toLowerCase().includes("shambu")) audienceLabel = "Shambu City Donors";
+      }
 
       result.push({
         id: `broadcast-log-${idx++}`,
