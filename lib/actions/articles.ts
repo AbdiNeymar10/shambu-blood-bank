@@ -14,6 +14,7 @@ export type AdminArticleItem = {
   status: "Published" | "Draft";
   views: number;
   isPublished: boolean;
+  coverImageUrl?: string;
 };
 
 /**
@@ -26,7 +27,7 @@ export async function getAdminArticlesData(): Promise<AdminArticleItem[]> {
 
     const { data, error } = await supabase
       .from("blog_posts")
-      .select("id, title, slug, excerpt, content, category, is_published, published_at, created_at, updated_at, author_id, users(full_name)")
+      .select("id, title, slug, excerpt, content, category, cover_image_url, is_published, published_at, created_at, updated_at, author_id, users(full_name)")
       .order("created_at", { ascending: false });
 
     if (error || !data) {
@@ -54,6 +55,7 @@ export async function getAdminArticlesData(): Promise<AdminArticleItem[]> {
         status,
         views: 0,
         isPublished: !!row.is_published,
+        coverImageUrl: row.cover_image_url || undefined,
       };
     });
   } catch (err) {
@@ -71,6 +73,7 @@ export async function createAdminArticle(input: {
   content: string;
   excerpt?: string;
   status: "Published" | "Draft";
+  coverImageUrl?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -101,6 +104,7 @@ export async function createAdminArticle(input: {
       category,
       content,
       excerpt: input.excerpt || title,
+      cover_image_url: input.coverImageUrl?.trim() || null,
       is_published: isPublished,
       published_at: publishedAt,
     });
@@ -128,6 +132,7 @@ export async function updateAdminArticle(
     content: string;
     excerpt?: string;
     status: "Published" | "Draft";
+    coverImageUrl?: string;
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -152,6 +157,7 @@ export async function updateAdminArticle(
         category,
         content,
         excerpt: input.excerpt || title,
+        cover_image_url: input.coverImageUrl?.trim() || null,
         is_published: isPublished,
         published_at: publishedAt,
         updated_at: new Date().toISOString(),
