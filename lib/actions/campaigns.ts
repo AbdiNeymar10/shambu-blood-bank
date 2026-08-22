@@ -398,6 +398,78 @@ export async function createAdminCampaign(input: {
   }
 }
 
+export async function updateAdminCampaign(
+  campaignId: string,
+  input: {
+    title: string;
+    description?: string;
+    location: string;
+    startDate: string;
+    endDate: string;
+    targetUnits: number;
+    imageUrl?: string;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = createAdminClient() as any;
+
+    const title = (input.title || "").trim();
+    const location = (input.location || "").trim();
+    const startDateStr = (input.startDate || "").trim();
+    const endDateStr = (input.endDate || "").trim();
+    const targetUnits = input.targetUnits || 100;
+
+    if (!title || !location || !startDateStr || !endDateStr) {
+      return { success: false, error: "Please enter campaign title, location, start date, and end date." };
+    }
+
+    const sDateObj = new Date(startDateStr);
+    const eDateObj = new Date(endDateStr);
+    if (isNaN(sDateObj.getTime()) || isNaN(eDateObj.getTime())) {
+      return { success: false, error: "Invalid start date or end date format." };
+    }
+
+    if (eDateObj < sDateObj) {
+      return { success: false, error: "End date cannot be before start date." };
+    }
+
+    const now = new Date();
+    let statusVal: CampaignStatus = "upcoming";
+    if (now >= sDateObj && now <= eDateObj) {
+      statusVal = "active";
+    } else if (now > eDateObj) {
+      statusVal = "completed";
+    }
+
+    const { error: updateErr } = await supabase
+      .from("campaigns")
+      .update({
+        title,
+        description: input.description || null,
+        location,
+        start_date: sDateObj.toISOString(),
+        end_date: eDateObj.toISOString(),
+        target_units: targetUnits,
+        status: statusVal,
+        image_url: input.imageUrl?.trim() || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", campaignId);
+
+    if (updateErr) {
+      console.error("Error updating campaign:", updateErr);
+      return { success: false, error: "Failed to update campaign record." };
+    }
+
+    revalidatePath("/admin/campaigns");
+    return { success: true };
+  } catch (err) {
+    console.error("Unexpected error in updateAdminCampaign:", err);
+    return { success: false, error: "An unexpected error occurred." };
+  }
+}
+
 export async function getCampaignDetails(campaignId: string): Promise<{
   campaign: AdminCampaignCard;
   volunteers: CampaignVolunteerItem[];
