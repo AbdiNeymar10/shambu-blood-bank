@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import type { BloodGroup, ComponentType, RequestPriority, RequestStatus } from "@/types/database.types";
 
 export type BloodRequestInput = {
@@ -93,7 +93,7 @@ export async function submitBloodRequest(
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = (await createClient()) as any;
+    const supabase = createAdminClient() as any;
 
     // Check if user is logged in
     const { data: { user: authUser } } = await supabase.auth.getUser();
