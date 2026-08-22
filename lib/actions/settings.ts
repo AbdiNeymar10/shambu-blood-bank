@@ -26,56 +26,66 @@ export async function changePassword(
   newPassword: string,
   confirmPassword: string
 ): Promise<{ success: boolean; error?: string }> {
-  if (!currentPassword) return { success: false, error: "Current password is required." };
-  if (!newPassword) return { success: false, error: "New password is required." };
-  if (newPassword.length < 8) return { success: false, error: "New password must be at least 8 characters." };
-  if (newPassword !== confirmPassword) return { success: false, error: "New passwords do not match." };
-  if (currentPassword === newPassword) return { success: false, error: "New password must be different from your current password." };
+  try {
+    if (!currentPassword) return { success: false, error: "Current password is required." };
+    if (!newPassword) return { success: false, error: "New password is required." };
+    if (newPassword.length < 8) return { success: false, error: "New password must be at least 8 characters." };
+    if (newPassword !== confirmPassword) return { success: false, error: "New passwords do not match." };
+    if (currentPassword === newPassword) return { success: false, error: "New password must be different from your current password." };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = (await createClient()) as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createClient()) as any;
 
-  // Verify the current password by re-authenticating
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.email) return { success: false, error: "Could not verify your session. Please log in again." };
+    // Verify the current password by re-authenticating
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) return { success: false, error: "Could not verify your session. Please log in again." };
 
-  const { error: signInErr } = await supabase.auth.signInWithPassword({
-    email: user.email,
-    password: currentPassword,
-  });
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
 
-  if (signInErr) {
-    return { success: false, error: "Current password is incorrect." };
+    if (signInErr) {
+      return { success: false, error: "Current password is incorrect." };
+    }
+
+    // Update to new password
+    const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword });
+
+    if (updateErr) {
+      return { success: false, error: updateErr.message || "Failed to update password. Please try again." };
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error("Unexpected error in changePassword:", err);
+    return { success: false, error: "An unexpected error occurred while updating your password." };
   }
-
-  // Update to new password
-  const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword });
-
-  if (updateErr) {
-    return { success: false, error: updateErr.message || "Failed to update password. Please try again." };
-  }
-
-  return { success: true };
 }
 
 // ---------------------------------------------------------------------------
 // Get notification preferences (stored in auth user_metadata)
 // ---------------------------------------------------------------------------
 export async function getNotificationPreferences(): Promise<NotificationPreferences> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = (await createClient()) as any;
-  const { data: { user } } = await supabase.auth.getUser();
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createClient()) as any;
+    const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) return DEFAULT_PREFERENCES;
+    if (!user) return DEFAULT_PREFERENCES;
 
-  const meta = user.user_metadata ?? {};
-  return {
-    smsEmergencyAlerts: meta.notify_sms_emergency ?? DEFAULT_PREFERENCES.smsEmergencyAlerts,
-    emailAppointmentReminders: meta.notify_email_appointments ?? DEFAULT_PREFERENCES.emailAppointmentReminders,
-    emailCampaignInvites: meta.notify_email_campaigns ?? DEFAULT_PREFERENCES.emailCampaignInvites,
-    inventoryShortageAlerts: meta.notify_inventory_shortages ?? DEFAULT_PREFERENCES.inventoryShortageAlerts,
-    pushDonationReminders: meta.notify_push_donations ?? DEFAULT_PREFERENCES.pushDonationReminders,
-  };
+    const meta = user.user_metadata ?? {};
+    return {
+      smsEmergencyAlerts: typeof meta.notify_sms_emergency === "boolean" ? meta.notify_sms_emergency : DEFAULT_PREFERENCES.smsEmergencyAlerts,
+      emailAppointmentReminders: typeof meta.notify_email_appointments === "boolean" ? meta.notify_email_appointments : DEFAULT_PREFERENCES.emailAppointmentReminders,
+      emailCampaignInvites: typeof meta.notify_email_campaigns === "boolean" ? meta.notify_email_campaigns : DEFAULT_PREFERENCES.emailCampaignInvites,
+      inventoryShortageAlerts: typeof meta.notify_inventory_shortages === "boolean" ? meta.notify_inventory_shortages : DEFAULT_PREFERENCES.inventoryShortageAlerts,
+      pushDonationReminders: typeof meta.notify_push_donations === "boolean" ? meta.notify_push_donations : DEFAULT_PREFERENCES.pushDonationReminders,
+    };
+  } catch (err) {
+    console.error("Error fetching notification preferences:", err);
+    return DEFAULT_PREFERENCES;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -84,21 +94,35 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
 export async function saveNotificationPreferences(
   prefs: NotificationPreferences
 ): Promise<{ success: boolean; error?: string }> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = (await createClient()) as any;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createClient()) as any;
 
-  const { error } = await supabase.auth.updateUser({
-    data: {
-      notify_sms_emergency: prefs.smsEmergencyAlerts,
-      notify_email_appointments: prefs.emailAppointmentReminders,
-      notify_email_campaigns: prefs.emailCampaignInvites,
-      notify_inventory_shortages: prefs.inventoryShortageAlerts,
-      notify_push_donations: prefs.pushDonationReminders,
-    },
-  });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: "You must be logged in to update preferences." };
+    }
 
-  if (error) return { success: false, error: error.message || "Failed to save preferences." };
-  return { success: true };
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        notify_sms_emergency: prefs.smsEmergencyAlerts,
+        notify_email_appointments: prefs.emailAppointmentReminders,
+        notify_email_campaigns: prefs.emailCampaignInvites,
+        notify_inventory_shortages: prefs.inventoryShortageAlerts ?? true,
+        notify_push_donations: prefs.pushDonationReminders ?? false,
+      },
+    });
+
+    if (error) return { success: false, error: error.message || "Failed to save preferences." };
+
+    revalidatePath("/donor/settings");
+    revalidatePath("/admin/settings");
+
+    return { success: true };
+  } catch (err) {
+    console.error("Error saving notification preferences:", err);
+    return { success: false, error: "An unexpected error occurred while saving preferences." };
+  }
 }
 
 // ---------------------------------------------------------------------------

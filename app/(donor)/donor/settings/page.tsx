@@ -321,7 +321,7 @@ export default function DonorSettingsPage() {
                 icon={Bell}
                 label="Push Donation Reminders"
                 description="In-app reminders when you are eligible to donate again"
-                checked={prefs.pushDonationReminders}
+                checked={prefs.pushDonationReminders ?? false}
                 onChange={(v) => setPrefs((p) => ({ ...p, pushDonationReminders: v }))}
               />
 
