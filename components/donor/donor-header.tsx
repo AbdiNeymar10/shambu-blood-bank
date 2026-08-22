@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Bell, Search, Menu, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -48,12 +49,12 @@ export function DonorHeader() {
       
       <div className="flex items-center gap-3">
         <ThemeToggle />
-        <div className="relative group">
-          <Button variant="outline" size="icon" className="rounded-full relative border-border/50">
+        <Link href="/donor/notifications">
+          <Button variant="outline" size="icon" className="rounded-full relative border-border/50 hover:bg-secondary transition-colors" title="Notifications">
             <Bell className="w-5 h-5 text-muted-foreground" />
             <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-background" />
           </Button>
-        </div>
+        </Link>
 
         <div className="h-8 w-[1px] bg-border mx-1" />
 
