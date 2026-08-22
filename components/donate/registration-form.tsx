@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, MapPin, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
+import { Calendar, Clock, MapPin, ArrowRight, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { registerDonorAppointment } from "@/lib/actions/donate";
 
 export function RegistrationForm() {
   const [formData, setFormData] = useState({
@@ -15,6 +16,7 @@ export function RegistrationForm() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -37,20 +39,42 @@ export function RegistrationForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (isSubmitting) return;
+
+    setSubmitError("");
+    if (!validate()) {
+      setSubmitError("Please fill out all required fields marked below.");
+      return;
+    }
 
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsSubmitting(false);
-    setIsSuccess(true);
+    try {
+      const res = await registerDonorAppointment(formData);
+      setIsSubmitting(false);
+
+      if (res.success) {
+        setIsSuccess(true);
+      } else {
+        setSubmitError(
+          res.error || "We couldn't process your registration right now. Please check your information and try again."
+        );
+        if (res.fieldErrors) {
+          setErrors(res.fieldErrors);
+        }
+      }
+    } catch (err) {
+      setIsSubmitting(false);
+      setSubmitError("We couldn't process your registration right now. Please check your information and try again.");
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
-    // Clear error when user starts typing
     if (errors[e.target.id]) {
       setErrors({ ...errors, [e.target.id]: "" });
+    }
+    if (submitError) {
+      setSubmitError("");
     }
   };
 
@@ -118,13 +142,15 @@ export function RegistrationForm() {
                   </div>
                   <h3 className="text-2xl font-bold text-foreground">Registration Complete!</h3>
                   <p className="text-muted-foreground max-w-md mx-auto">
-                    Thank you for taking the pledge to save lives. We have sent a confirmation email to <span className="font-medium text-foreground">{formData.email}</span> with your registration details.
+                    Thank you for taking the pledge to save lives. Your appointment request has been scheduled in Supabase. We have recorded your email <span className="font-medium text-foreground">{formData.email}</span> for confirmation.
                   </p>
                   <Button 
                     variant="outline" 
                     className="mt-4"
                     onClick={() => {
                       setIsSuccess(false);
+                      setSubmitError("");
+                      setErrors({});
                       setFormData({ firstName: "", lastName: "", email: "", phone: "", bloodType: "" });
                     }}
                   >
@@ -139,6 +165,14 @@ export function RegistrationForm() {
                   exit={{ opacity: 0 }}
                 >
                   <h3 className="text-2xl font-bold mb-6 text-foreground">Registration Details</h3>
+                  
+                  {submitError && (
+                    <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium flex items-center gap-3 mb-6">
+                      <AlertTriangle className="w-5 h-5 shrink-0" />
+                      <span>{submitError}</span>
+                    </div>
+                  )}
+
                   <form className="space-y-6" onSubmit={handleSubmit} noValidate>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div className="space-y-2">
@@ -236,7 +270,7 @@ export function RegistrationForm() {
                     </div>
 
                     <div className="pt-4">
-                      <Button size="lg" className="w-full group" disabled={isSubmitting}>
+                      <Button type="submit" size="lg" className="w-full group" disabled={isSubmitting}>
                         {isSubmitting ? (
                           <>
                             <Loader2 className="mr-2 w-5 h-5 animate-spin" />
