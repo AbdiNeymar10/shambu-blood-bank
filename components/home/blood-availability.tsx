@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Droplet, AlertTriangle, CheckCircle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Container, SectionHeader } from "@/components/shared";
 import { staggerContainerFast, fadeInUp, viewportOnce } from "@/lib/motion";
+import { getPublicAvailabilityData } from "@/lib/actions/inventory";
 
 type BloodStatus = "Available" | "Low" | "Critical";
 
@@ -14,15 +16,15 @@ interface BloodGroup {
   status: BloodStatus;
 }
 
-const bloodInventory: BloodGroup[] = [
-  { type: "A+", stock: 85, status: "Available" },
-  { type: "A-", stock: 12, status: "Low" },
-  { type: "B+", stock: 65, status: "Available" },
-  { type: "B-", stock: 4, status: "Critical" },
-  { type: "AB+", stock: 42, status: "Available" },
-  { type: "AB-", stock: 2, status: "Critical" },
-  { type: "O+", stock: 95, status: "Available" },
-  { type: "O-", stock: 8, status: "Low" },
+const DEFAULT_INVENTORY: BloodGroup[] = [
+  { type: "A+", stock: 0, status: "Critical" },
+  { type: "A-", stock: 0, status: "Critical" },
+  { type: "B+", stock: 0, status: "Critical" },
+  { type: "B-", stock: 0, status: "Critical" },
+  { type: "AB+", stock: 0, status: "Critical" },
+  { type: "AB-", stock: 0, status: "Critical" },
+  { type: "O+", stock: 0, status: "Critical" },
+  { type: "O-", stock: 0, status: "Critical" },
 ];
 
 const statusConfig = {
@@ -32,6 +34,33 @@ const statusConfig = {
 };
 
 export function BloodAvailability() {
+  const [bloodInventory, setBloodInventory] = useState<BloodGroup[]>(DEFAULT_INVENTORY);
+
+  useEffect(() => {
+    async function fetchLiveInventory() {
+      try {
+        const res = await getPublicAvailabilityData("all", "all");
+        if (res?.items && res.items.length > 0) {
+          const items: BloodGroup[] = res.items.map((item) => {
+            let status: BloodStatus = "Available";
+            if (item.status === "critical") status = "Critical";
+            else if (item.status === "low") status = "Low";
+
+            return {
+              type: item.type,
+              stock: item.unitsAvailable,
+              status,
+            };
+          });
+          setBloodInventory(items);
+        }
+      } catch (err) {
+        console.error("Error fetching live inventory for home page:", err);
+      }
+    }
+    fetchLiveInventory();
+  }, []);
+
   return (
     <section className="section-padding bg-muted/30">
       <Container>
