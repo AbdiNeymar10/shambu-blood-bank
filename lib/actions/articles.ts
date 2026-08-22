@@ -17,6 +17,19 @@ export type AdminArticleItem = {
   coverImageUrl?: string;
 };
 
+export type PublicArticleItem = {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  category: string;
+  author: string;
+  publishDate: string;
+  readTime: string;
+  coverImageUrl: string;
+};
+
 /**
  * Fetches all blog posts for the Admin Blog Management page from Supabase.
  */
@@ -173,5 +186,104 @@ export async function updateAdminArticle(
   } catch (err) {
     console.error("Unexpected error in updateAdminArticle:", err);
     return { success: false, error: "An unexpected error occurred." };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Public Blog Actions
+// ---------------------------------------------------------------------------
+
+function calculateReadTime(content: string): string {
+  const words = content ? content.trim().split(/\s+/).length : 0;
+  const minutes = Math.max(1, Math.ceil(words / 200));
+  return `${minutes} min read`;
+}
+
+/**
+ * Fetches all published articles for public blog pages.
+ */
+export async function getPublicBlogPosts(): Promise<PublicArticleItem[]> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createClient()) as any;
+
+    const { data, error } = await supabase
+      .from("blog_posts")
+      .select("id, title, slug, excerpt, content, category, cover_image_url, published_at, created_at, users(full_name)")
+      .eq("is_published", true)
+      .order("published_at", { ascending: false });
+
+    if (error || !data) return [];
+
+    return data.map((row: any) => {
+      const user = Array.isArray(row.users) ? row.users[0] : row.users;
+      const authorName = user?.full_name || "Shambu Medical Team";
+      const dateStr = row.published_at || row.created_at;
+      const publishDate = dateStr
+        ? new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+        : "Recent";
+
+      return {
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        excerpt: row.excerpt || row.title,
+        content: row.content || "",
+        category: row.category || "Health & Education",
+        author: authorName,
+        publishDate,
+        readTime: calculateReadTime(row.content || ""),
+        coverImageUrl:
+          row.cover_image_url ||
+          "https://images.unsplash.com/photo-1579684385127-1ef15d508118?q=80&w=1200&auto=format&fit=crop",
+      };
+    });
+  } catch (err) {
+    console.error("Error fetching public blog posts:", err);
+    return [];
+  }
+}
+
+/**
+ * Fetches a single published blog post by its slug.
+ */
+export async function getPublicBlogPostBySlug(slug: string): Promise<PublicArticleItem | null> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createClient()) as any;
+
+    const { data, error } = await supabase
+      .from("blog_posts")
+      .select("id, title, slug, excerpt, content, category, cover_image_url, published_at, created_at, users(full_name)")
+      .eq("slug", slug)
+      .eq("is_published", true)
+      .maybeSingle();
+
+    if (error || !data) return null;
+
+    const user = Array.isArray(data.users) ? data.users[0] : data.users;
+    const authorName = user?.full_name || "Shambu Medical Team";
+    const dateStr = data.published_at || data.created_at;
+    const publishDate = dateStr
+      ? new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      : "Recent";
+
+    return {
+      id: data.id,
+      title: data.title,
+      slug: data.slug,
+      excerpt: data.excerpt || data.title,
+      content: data.content || "",
+      category: data.category || "Health & Education",
+      author: authorName,
+      publishDate,
+      readTime: calculateReadTime(data.content || ""),
+      coverImageUrl:
+        data.cover_image_url ||
+        "https://images.unsplash.com/photo-1579684385127-1ef15d508118?q=80&w=1200&auto=format&fit=crop",
+    };
+  } catch (err) {
+    console.error("Error fetching public blog post by slug:", err);
+    return null;
   }
 }
