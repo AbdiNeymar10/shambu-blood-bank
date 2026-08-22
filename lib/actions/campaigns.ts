@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 export type CampaignStatus = "upcoming" | "active" | "completed" | "cancelled";
 export type RegistrationStatus = "registered" | "cancelled" | "attended";
@@ -29,6 +29,31 @@ export type RegistrationRecord = {
   donorId: string;
   status: RegistrationStatus;
   createdAt: string;
+};
+
+export type AdminCampaignCard = {
+  id: string;
+  title: string;
+  slug: string;
+  description?: string | null;
+  location: string;
+  startDate: string;
+  endDate: string;
+  targetUnits: number;
+  collectedUnits: number;
+  registeredDonors: number;
+  progress: number;
+  status: "Active" | "Upcoming" | "Completed";
+  hospitalName?: string;
+};
+
+export type CampaignVolunteerItem = {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  bloodGroup: string;
+  registeredAt: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -76,8 +101,9 @@ async function getDonorProfileId(): Promise<string | null> {
 }
 
 // ---------------------------------------------------------------------------
-// Fetch campaigns visible to donors (active + upcoming)
+// Donor Portal Actions
 // ---------------------------------------------------------------------------
+
 export async function getDonorCampaigns(): Promise<{
   campaigns: CampaignRecord[];
   myRegistrations: Record<string, RegistrationRecord>;
@@ -98,54 +124,16 @@ export async function getDonorCampaigns(): Promise<{
 
   const campaignIds: string[] = camps.map((c: { id: string }) => c.id);
 
-  // Get registration counts
-  const countMap: Record<string, number> = {};
-  if (campaignIds.length > 0) {
-    const { data: regCounts } = await supabase
-      .from("campaign_registrations")
-      .select("campaign_id")
-      .in("campaign_id", campaignIds)
-      .eq("status", "registered");
-    if (regCounts) {
-      for (const row of regCounts as { campaign_id: string }[]) {
-        countMap[row.campaign_id] = (countMap[row.campaign_id] ?? 0) + 1;
-      }
-    }
-  }
-
-  const campaigns: CampaignRecord[] = camps.map((c: {
-    id: string; title: string; slug: string; description?: string;
-    location: string; start_date: string; end_date: string;
-    target_units: number; collected_units: number; status: CampaignStatus; image_url?: string;
-  }) => {
-    const regCount = countMap[c.id] ?? 0;
-    return {
-      id: c.id,
-      title: c.title,
-      slug: c.slug,
-      description: c.description,
-      location: c.location,
-      startDate: c.start_date,
-      endDate: c.end_date,
-      formattedDates: formatDateRange(c.start_date, c.end_date),
-      targetUnits: c.target_units,
-      collectedUnits: c.collected_units,
-      status: c.status,
-      imageUrl: c.image_url,
-      registrationCount: regCount,
-      availableSlots: Math.max(0, c.target_units - regCount),
-    };
-  });
-
   const donorProfileId = await getDonorProfileId();
-
   const myRegistrations: Record<string, RegistrationRecord> = {};
+
   if (donorProfileId && campaignIds.length > 0) {
     const { data: myRegs } = await supabase
       .from("campaign_registrations")
       .select("id, campaign_id, donor_id, status, created_at")
       .eq("donor_id", donorProfileId)
       .in("campaign_id", campaignIds);
+
     if (myRegs) {
       for (const r of myRegs as { id: string; campaign_id: string; donor_id: string; status: RegistrationStatus; created_at: string }[]) {
         myRegistrations[r.campaign_id] = { id: r.id, campaignId: r.campaign_id, donorId: r.donor_id, status: r.status, createdAt: r.created_at };
@@ -153,12 +141,38 @@ export async function getDonorCampaigns(): Promise<{
     }
   }
 
+  const campaigns: CampaignRecord[] = camps.map((c: {
+    id: string;
+    title: string;
+    slug: string;
+    description: string | null;
+    location: string;
+    start_date: string;
+    end_date: string;
+    target_units: number;
+    collected_units: number;
+    status: CampaignStatus;
+    image_url: string | null;
+  }) => ({
+    id: c.id,
+    title: c.title,
+    slug: c.slug,
+    description: c.description ?? undefined,
+    location: c.location,
+    startDate: c.start_date,
+    endDate: c.end_date,
+    formattedDates: formatDateRange(c.start_date, c.end_date),
+    targetUnits: c.target_units ?? 100,
+    collectedUnits: c.collected_units ?? 0,
+    status: c.status,
+    imageUrl: c.image_url ?? undefined,
+    registrationCount: 0,
+    availableSlots: Math.max(0, (c.target_units ?? 100) - (c.collected_units ?? 0)),
+  }));
+
   return { campaigns, myRegistrations, donorProfileId };
 }
 
-// ---------------------------------------------------------------------------
-// Register for a campaign
-// ---------------------------------------------------------------------------
 export async function registerForCampaign(
   campaignId: string
 ): Promise<{ success: boolean; error?: string }> {
@@ -169,7 +183,6 @@ export async function registerForCampaign(
   const donorProfileId = await getDonorProfileId();
   if (!donorProfileId) return { success: false, error: "Donor profile not found. Please complete registration." };
 
-  // Check for duplicate
   const { data: existing } = await supabase
     .from("campaign_registrations")
     .select("id, status")
@@ -183,7 +196,6 @@ export async function registerForCampaign(
     return { success: false, error: "You are already registered for this campaign." };
   }
 
-  // Re-activate a previously cancelled registration
   if (existingReg?.status === "cancelled") {
     const { error: updateErr } = await supabase
       .from("campaign_registrations")
@@ -207,9 +219,6 @@ export async function registerForCampaign(
   return { success: true };
 }
 
-// ---------------------------------------------------------------------------
-// Cancel a campaign registration
-// ---------------------------------------------------------------------------
 export async function cancelCampaignRegistration(
   registrationId: string
 ): Promise<{ success: boolean; error?: string }> {
@@ -227,4 +236,236 @@ export async function cancelCampaignRegistration(
 
   revalidatePath("/donor/campaigns");
   return { success: true };
+}
+
+// ---------------------------------------------------------------------------
+// Admin Portal Actions
+// ---------------------------------------------------------------------------
+
+export async function getAdminCampaignsData(): Promise<AdminCampaignCard[]> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createClient()) as any;
+
+    const [campsRes, regsRes] = await Promise.all([
+      supabase
+        .from("campaigns")
+        .select("id, title, slug, description, location, start_date, end_date, target_units, collected_units, status, hospital_id, hospitals(name)")
+        .order("start_date", { ascending: true }),
+
+      supabase
+        .from("campaign_registrations")
+        .select("id, campaign_id, status")
+        .neq("status", "cancelled"),
+    ]);
+
+    const camps = campsRes.data || [];
+    const regs = regsRes.data || [];
+
+    const regsCountMap: Record<string, number> = {};
+    regs.forEach((r: any) => {
+      regsCountMap[r.campaign_id] = (regsCountMap[r.campaign_id] || 0) + 1;
+    });
+
+    const now = new Date();
+
+    const campaignList: AdminCampaignCard[] = camps.map((c: any) => {
+      const sDateObj = new Date(c.start_date);
+      const eDateObj = new Date(c.end_date);
+      eDateObj.setHours(23, 59, 59, 999);
+
+      let dynamicStatus: "Active" | "Upcoming" | "Completed" = "Upcoming";
+      if (now >= sDateObj && now <= eDateObj) {
+        dynamicStatus = "Active";
+      } else if (now > eDateObj) {
+        dynamicStatus = "Completed";
+      } else {
+        dynamicStatus = "Upcoming";
+      }
+
+      const registeredCount = regsCountMap[c.id] || 0;
+      const target = c.target_units || 100;
+      const progress = Math.min(100, Math.round((registeredCount / target) * 100));
+      const hospObj = Array.isArray(c.hospitals) ? c.hospitals[0] : c.hospitals;
+
+      return {
+        id: c.id,
+        title: c.title,
+        slug: c.slug,
+        description: c.description,
+        location: c.location || hospObj?.name || "Shambu Center",
+        startDate: c.start_date ? c.start_date.split("T")[0] : "",
+        endDate: c.end_date ? c.end_date.split("T")[0] : "",
+        targetUnits: target,
+        collectedUnits: c.collected_units || 0,
+        registeredDonors: registeredCount,
+        progress,
+        status: dynamicStatus,
+        hospitalName: hospObj?.name,
+      };
+    });
+
+    // Dynamic ordering: Active (1) -> Upcoming (2) -> Completed (3)
+    campaignList.sort((a, b) => {
+      const order = { Active: 1, Upcoming: 2, Completed: 3 };
+      if (order[a.status] !== order[b.status]) {
+        return order[a.status] - order[b.status];
+      }
+      return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+    });
+
+    return campaignList;
+  } catch (err) {
+    console.error("Error fetching admin campaigns data:", err);
+    return [];
+  }
+}
+
+export async function createAdminCampaign(input: {
+  title: string;
+  description?: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  targetUnits: number;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = createAdminClient() as any;
+
+    const title = (input.title || "").trim();
+    const location = (input.location || "").trim();
+    const startDateStr = (input.startDate || "").trim();
+    const endDateStr = (input.endDate || "").trim();
+    const targetUnits = input.targetUnits || 100;
+
+    if (!title || !location || !startDateStr || !endDateStr) {
+      return { success: false, error: "Please enter campaign title, location, start date, and end date." };
+    }
+
+    const sDateObj = new Date(startDateStr);
+    const eDateObj = new Date(endDateStr);
+    if (isNaN(sDateObj.getTime()) || isNaN(eDateObj.getTime())) {
+      return { success: false, error: "Invalid start date or end date format." };
+    }
+
+    if (eDateObj < sDateObj) {
+      return { success: false, error: "End date cannot be before start date." };
+    }
+
+    const slug =
+      title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)+/g, "") +
+      "-" +
+      Math.floor(1000 + Math.random() * 9000);
+
+    const now = new Date();
+    let statusVal: CampaignStatus = "upcoming";
+    if (now >= sDateObj && now <= eDateObj) {
+      statusVal = "active";
+    } else if (now > eDateObj) {
+      statusVal = "completed";
+    }
+
+    const { error: insertErr } = await supabase.from("campaigns").insert({
+      title,
+      slug,
+      description: input.description || null,
+      location,
+      start_date: sDateObj.toISOString(),
+      end_date: eDateObj.toISOString(),
+      target_units: targetUnits,
+      collected_units: 0,
+      status: statusVal,
+    });
+
+    if (insertErr) {
+      console.error("Error creating campaign:", insertErr);
+      return { success: false, error: "Failed to create campaign record." };
+    }
+
+    revalidatePath("/admin/campaigns");
+    return { success: true };
+  } catch (err) {
+    console.error("Unexpected error in createAdminCampaign:", err);
+    return { success: false, error: "An unexpected error occurred." };
+  }
+}
+
+export async function getCampaignDetails(campaignId: string): Promise<{
+  campaign: AdminCampaignCard;
+  volunteers: CampaignVolunteerItem[];
+} | null> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createClient()) as any;
+
+    const [campRes, regsRes] = await Promise.all([
+      supabase
+        .from("campaigns")
+        .select("id, title, slug, description, location, start_date, end_date, target_units, collected_units, status")
+        .eq("id", campaignId)
+        .single(),
+
+      supabase
+        .from("campaign_registrations")
+        .select("id, status, created_at, donor_profiles(id, blood_group, users(full_name, phone, email))")
+        .eq("campaign_id", campaignId)
+        .neq("status", "cancelled"),
+    ]);
+
+    if (!campRes.data) return null;
+    const c = campRes.data;
+
+    const now = new Date();
+    const sDateObj = new Date(c.start_date);
+    const eDateObj = new Date(c.end_date);
+    eDateObj.setHours(23, 59, 59, 999);
+
+    let dynamicStatus: "Active" | "Upcoming" | "Completed" = "Upcoming";
+    if (now >= sDateObj && now <= eDateObj) {
+      dynamicStatus = "Active";
+    } else if (now > eDateObj) {
+      dynamicStatus = "Completed";
+    }
+
+    const volunteers: CampaignVolunteerItem[] = (regsRes.data || []).map((r: any) => {
+      const dp = Array.isArray(r.donor_profiles) ? r.donor_profiles[0] : r.donor_profiles;
+      const u = dp?.users ? (Array.isArray(dp.users) ? dp.users[0] : dp.users) : null;
+      return {
+        id: r.id,
+        name: u?.full_name || "Anonymous Volunteer",
+        phone: u?.phone || "N/A",
+        email: u?.email || "N/A",
+        bloodGroup: dp?.blood_group || "O+",
+        registeredAt: r.created_at ? new Date(r.created_at).toISOString().split("T")[0] : "N/A",
+      };
+    });
+
+    const target = c.target_units || 100;
+    const progress = Math.min(100, Math.round((volunteers.length / target) * 100));
+
+    return {
+      campaign: {
+        id: c.id,
+        title: c.title,
+        slug: c.slug,
+        description: c.description,
+        location: c.location || "Shambu Center",
+        startDate: c.start_date ? c.start_date.split("T")[0] : "",
+        endDate: c.end_date ? c.end_date.split("T")[0] : "",
+        targetUnits: target,
+        collectedUnits: c.collected_units || 0,
+        registeredDonors: volunteers.length,
+        progress,
+        status: dynamicStatus,
+      },
+      volunteers,
+    };
+  } catch (err) {
+    console.error("Error fetching campaign details:", err);
+    return null;
+  }
 }
