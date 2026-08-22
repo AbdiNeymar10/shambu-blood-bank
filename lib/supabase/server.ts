@@ -30,3 +30,25 @@ export async function createClient() {
     }
   );
 }
+
+/**
+ * Creates a privileged admin Supabase client using the service role key for server actions.
+ */
+export function createAdminClient() {
+  const serviceRoleKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  const { createClient: createSupabaseClient } = require("@supabase/supabase-js");
+
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceRoleKey,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    }
+  );
+}
