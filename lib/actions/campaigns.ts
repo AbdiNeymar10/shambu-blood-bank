@@ -45,6 +45,7 @@ export type AdminCampaignCard = {
   progress: number;
   status: "Active" | "Upcoming" | "Completed";
   hospitalName?: string;
+  imageUrl?: string;
 };
 
 export type CampaignVolunteerItem = {
@@ -250,7 +251,7 @@ export async function getAdminCampaignsData(): Promise<AdminCampaignCard[]> {
     const [campsRes, regsRes] = await Promise.all([
       supabase
         .from("campaigns")
-        .select("id, title, slug, description, location, start_date, end_date, target_units, collected_units, status, hospital_id, hospitals(name)")
+        .select("id, title, slug, description, location, start_date, end_date, target_units, collected_units, status, image_url, hospital_id, hospitals(name)")
         .order("start_date", { ascending: true }),
 
       supabase
@@ -302,6 +303,7 @@ export async function getAdminCampaignsData(): Promise<AdminCampaignCard[]> {
         progress,
         status: dynamicStatus,
         hospitalName: hospObj?.name,
+        imageUrl: c.image_url || undefined,
       };
     });
 
@@ -328,6 +330,7 @@ export async function createAdminCampaign(input: {
   startDate: string;
   endDate: string;
   targetUnits: number;
+  imageUrl?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -379,6 +382,7 @@ export async function createAdminCampaign(input: {
       target_units: targetUnits,
       collected_units: 0,
       status: statusVal,
+      image_url: input.imageUrl?.trim() || null,
     });
 
     if (insertErr) {
@@ -405,7 +409,7 @@ export async function getCampaignDetails(campaignId: string): Promise<{
     const [campRes, regsRes] = await Promise.all([
       supabase
         .from("campaigns")
-        .select("id, title, slug, description, location, start_date, end_date, target_units, collected_units, status")
+        .select("id, title, slug, description, location, start_date, end_date, target_units, collected_units, status, image_url")
         .eq("id", campaignId)
         .single(),
 
@@ -461,6 +465,7 @@ export async function getCampaignDetails(campaignId: string): Promise<{
         registeredDonors: volunteers.length,
         progress,
         status: dynamicStatus,
+        imageUrl: c.image_url || undefined,
       },
       volunteers,
     };
