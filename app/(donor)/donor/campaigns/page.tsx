@@ -57,29 +57,43 @@ function CampaignCard({
 }) {
   const isRegistered = registration?.status === "registered";
   const isFull = camp.availableSlots === 0 && !isRegistered;
+  const bannerImage = camp.imageUrl || "https://images.unsplash.com/photo-1615461066841-6116e61058f4?auto=format&fit=crop&q=80&w=800";
 
   return (
-    <Card className="border-border/60 shadow-sm hover:shadow-md transition-shadow">
-      <CardHeader>
-        <div className="flex justify-between items-start mb-2">
-          <StatusBadge status={camp.status} />
-          <span className="text-xs text-muted-foreground font-semibold">Goal: {camp.targetUnits} Units</span>
+    <Card className="border-border/60 shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between">
+      <div>
+        {/* Campaign Banner Picture */}
+        <div className="h-44 w-full overflow-hidden relative group">
+          <img 
+            src={bannerImage} 
+            alt={camp.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
         </div>
-        <CardTitle className="text-xl font-bold">{camp.title}</CardTitle>
-        {camp.description && <p className="text-sm text-muted-foreground mt-1">{camp.description}</p>}
-      </CardHeader>
-      <CardContent className="space-y-4">
+
+        <CardHeader className="pt-4">
+          <div className="flex justify-between items-start mb-2">
+            <StatusBadge status={camp.status} />
+            <span className="text-xs text-muted-foreground font-semibold">Goal: {camp.targetUnits} Units</span>
+          </div>
+          <CardTitle className="text-xl font-bold">{camp.title}</CardTitle>
+          {camp.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{camp.description}</p>}
+        </CardHeader>
+      </div>
+
+      <CardContent className="space-y-4 pt-0">
         <div className="space-y-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-primary" />
+            <MapPin className="w-4 h-4 text-primary shrink-0" />
             <span className="text-foreground font-medium">{camp.location}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-primary" />
+            <Calendar className="w-4 h-4 text-primary shrink-0" />
             <span className="text-foreground font-medium">{camp.formattedDates}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-primary" />
+            <Users className="w-4 h-4 text-primary shrink-0" />
             <span className="text-foreground font-medium">{camp.registrationCount} Registered</span>
           </div>
         </div>
