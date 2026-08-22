@@ -1,9 +1,25 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Phone, Mail, MapPin, Clock, Facebook, Twitter, Instagram, Linkedin } from "lucide-react";
+import { getContactInfoData } from "@/lib/actions/contact";
+import type { PublicSystemSettings } from "@/lib/actions/settings";
 
 export function ContactInfo() {
+  const [info, setInfo] = useState<PublicSystemSettings>({
+    bloodBankName: "Shambu Blood Bank",
+    emergencyHotline: "+251 57 665 0123",
+    primaryContactEmail: "abitolesa23@gmail.com",
+    locationAddress: "Shambu Town, Horo Guduru Wollega, Oromia, Ethiopia",
+  });
+
+  useEffect(() => {
+    getContactInfoData().then((data) => {
+      if (data) setInfo(data);
+    });
+  }, []);
+
   return (
     <div className="space-y-12">
       <div>
@@ -14,7 +30,7 @@ export function ContactInfo() {
       </div>
 
       <div className="space-y-6">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: -20 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
@@ -25,12 +41,14 @@ export function ContactInfo() {
           </div>
           <div>
             <h4 className="font-bold mb-1">Phone</h4>
-            <p className="text-muted-foreground mb-1">General Inquiries: <a href="tel:1-800-123-4567" className="text-foreground hover:text-primary transition-colors">1-800-123-4567</a></p>
-            <p className="text-destructive font-semibold">Emergency Request: 1-800-EMERGENCY</p>
+            <p className="text-muted-foreground mb-1">
+              General Inquiries: <a href={`tel:${info.emergencyHotline}`} className="text-foreground hover:text-primary transition-colors">{info.emergencyHotline}</a>
+            </p>
+            <p className="text-destructive font-semibold">Emergency Hotline: {info.emergencyHotline}</p>
           </div>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: -20 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
@@ -42,11 +60,13 @@ export function ContactInfo() {
           </div>
           <div>
             <h4 className="font-bold mb-1">Email</h4>
-            <p className="text-muted-foreground"><a href="mailto:contact@shambublood.org" className="hover:text-primary transition-colors">contact@shambublood.org</a></p>
+            <p className="text-muted-foreground">
+              <a href={`mailto:${info.primaryContactEmail}`} className="hover:text-primary transition-colors">{info.primaryContactEmail}</a>
+            </p>
           </div>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: -20 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
@@ -59,14 +79,12 @@ export function ContactInfo() {
           <div>
             <h4 className="font-bold mb-1">Main Headquarters</h4>
             <p className="text-muted-foreground">
-              123 Lifesaver Avenue<br />
-              Medical District<br />
-              Metropolis, NY 10001
+              {info.locationAddress}
             </p>
           </div>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: -20 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}

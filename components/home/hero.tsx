@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock, ShieldCheck, Activity, Users, Droplet } from "lucide-react";
@@ -58,11 +59,15 @@ export function Hero() {
           </motion.p>
 
           <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto mb-16 md:mb-20">
-            <Button size="lg" className="h-13 px-8 text-base sm:text-lg bg-red-600 hover:bg-red-700 text-white rounded-full shadow-[0_0_30px_rgba(220,38,38,0.3)] transition-all hover:scale-105 active:scale-95 border border-red-500/50">
-              Donate Now
+            <Button size="lg" asChild className="h-13 px-8 text-base sm:text-lg bg-red-600 hover:bg-red-700 text-white rounded-full shadow-[0_0_30px_rgba(220,38,38,0.3)] transition-all hover:scale-105 active:scale-95 border border-red-500/50">
+              <Link href="/donate">
+                Donate Now
+              </Link>
             </Button>
-            <Button size="lg" variant="outline" className="h-13 px-8 text-base sm:text-lg rounded-full backdrop-blur-md bg-background/50 border-border/50 hover:bg-accent/50 transition-all hover:scale-105 active:scale-95">
-              Request Blood
+            <Button size="lg" variant="outline" asChild className="h-13 px-8 text-base sm:text-lg rounded-full backdrop-blur-md bg-background/50 border-border/50 hover:bg-accent/50 transition-all hover:scale-105 active:scale-95">
+              <Link href="/request">
+                Request Blood
+              </Link>
             </Button>
           </motion.div>
 

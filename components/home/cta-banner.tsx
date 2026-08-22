@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ArrowRight, PhoneCall } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/shared";
 import { fadeInUp, viewportOnce } from "@/lib/motion";
@@ -28,13 +29,17 @@ export function CtaBanner() {
             </div>
 
             <motion.div initial="hidden" whileInView="visible" viewport={viewportOnce} variants={fadeInUp} className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto shrink-0">
-              <Button size="lg" className="h-13 px-8 text-base bg-white text-red-600 hover:bg-red-50 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95">
-                Become a Donor
-                <ArrowRight className="ml-2 w-5 h-5" />
+              <Button size="lg" asChild className="h-13 px-8 text-base bg-white text-red-600 hover:bg-red-50 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95">
+                <Link href="/become-a-donor">
+                  Become a Donor
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Link>
               </Button>
-              <Button size="lg" variant="outline" className="h-13 px-8 text-base border-white/30 text-white hover:bg-white/10 rounded-full backdrop-blur-sm transition-all hover:scale-105 active:scale-95">
-                <PhoneCall className="mr-2 w-5 h-5" />
-                Emergency Request
+              <Button size="lg" variant="outline" asChild className="h-13 px-8 text-base border-white/30 text-white hover:bg-white/10 rounded-full backdrop-blur-sm transition-all hover:scale-105 active:scale-95">
+                <Link href="/request">
+                  <PhoneCall className="mr-2 w-5 h-5" />
+                  Emergency Request
+                </Link>
               </Button>
             </motion.div>
           </div>

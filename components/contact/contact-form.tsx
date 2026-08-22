@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Send, Loader2, CheckCircle2 } from "lucide-react";
+import { Send, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { submitContactMessage } from "@/lib/actions/contact";
 
 export function ContactForm() {
   const [formData, setFormData] = useState({
@@ -17,6 +18,8 @@ export function ContactForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [deliveredEmail, setDeliveredEmail] = useState(false);
+  const [emailErrorMsg, setEmailErrorMsg] = useState<string | null>(null);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -44,10 +47,16 @@ export function ContactForm() {
     if (!validate()) return;
 
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const res = await submitContactMessage(formData);
     setIsSubmitting(false);
-    setIsSuccess(true);
+
+    if (res.success) {
+      setDeliveredEmail(!!res.deliveredEmail);
+      setEmailErrorMsg(res.emailError || null);
+      setIsSuccess(true);
+    } else {
+      setErrors((prev) => ({ ...prev, submit: res.error || "Failed to send message. Please try again." }));
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -76,9 +85,32 @@ export function ContactForm() {
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <h3 className="text-2xl font-bold">Message Sent!</h3>
-            <p className="text-muted-foreground">
-              Thank you for reaching out, {formData.firstName}. We've received your message and will get back to you at {formData.email} as soon as possible.
+            <p className="text-muted-foreground max-w-md">
+              Thank you for reaching out, {formData.firstName}. Your message has been logged securely in our system.
             </p>
+
+            {deliveredEmail ? (
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 p-3.5 rounded-xl text-xs text-emerald-700 dark:text-emerald-300 font-semibold max-w-md">
+                ✓ Email successfully delivered to inbox!
+              </div>
+            ) : (
+              <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 p-3.5 rounded-xl text-xs text-amber-800 dark:text-amber-300 font-medium max-w-md space-y-1 text-left">
+                <p className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  Saved to Database (Email Dispatch Note):
+                </p>
+                {emailErrorMsg ? (
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400 font-mono bg-amber-100/60 dark:bg-amber-900/40 p-2 rounded-lg break-words">
+                    {emailErrorMsg}
+                  </p>
+                ) : (
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    Logged in system database. Please ensure dev server is restarted to load .env.local keys.
+                  </p>
+                )}
+              </div>
+            )}
+
             <Button 
               variant="outline" 
               className="mt-6"
@@ -98,6 +130,12 @@ export function ContactForm() {
             exit={{ opacity: 0 }}
           >
             <h3 className="text-2xl font-bold mb-6">Send us a Message</h3>
+            {errors.submit && (
+              <div className="mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm font-semibold flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <span>{errors.submit}</span>
+              </div>
+            )}
             <form className="space-y-6" onSubmit={handleSubmit} noValidate>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
