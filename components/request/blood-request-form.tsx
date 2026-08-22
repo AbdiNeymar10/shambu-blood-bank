@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { FileText, Hospital, User, Send, Loader2, CheckCircle2 } from "lucide-react";
+import { FileText, Hospital, User, Send, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { submitBloodRequest } from "@/lib/actions/request-blood";
 
 export function BloodRequestForm() {
   const [formData, setFormData] = useState({
     patientName: "",
+    patientAge: "",
     bloodGroup: "",
     units: "",
     requirementDate: "",
@@ -22,15 +24,23 @@ export function BloodRequestForm() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [submittedDetails, setSubmittedDetails] = useState<{
+    requestNumber: string;
+    status: string;
+    bloodGroup: string;
+    contactNumber: string;
+  } | null>(null);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.patientName.trim()) newErrors.patientName = "Patient name is required";
+    if (!formData.patientAge || parseInt(formData.patientAge, 10) < 0) newErrors.patientAge = "Patient age is required";
     if (!formData.bloodGroup) newErrors.bloodGroup = "Blood group is required";
-    if (!formData.units || parseInt(formData.units) < 1) newErrors.units = "Valid units required";
-    if (!formData.requirementDate) newErrors.requirementDate = "Date is required";
+    if (!formData.units || parseInt(formData.units, 10) < 1) newErrors.units = "Valid positive units required";
+    if (!formData.requirementDate) newErrors.requirementDate = "Requirement date is required";
     
     if (!formData.hospitalName.trim()) newErrors.hospitalName = "Hospital name is required";
     if (!formData.hospitalAddress.trim()) newErrors.hospitalAddress = "Hospital address is required";
@@ -47,13 +57,39 @@ export function BloodRequestForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (isSubmitting) return;
+
+    setSubmitError("");
+    if (!validate()) {
+      setSubmitError("Please fill out all required fields marked below.");
+      return;
+    }
 
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setIsSubmitting(false);
-    setIsSuccess(true);
+    try {
+      const res = await submitBloodRequest(formData);
+      setIsSubmitting(false);
+
+      if (res.success && res.requestNumber) {
+        setSubmittedDetails({
+          requestNumber: res.requestNumber,
+          status: res.status || "Pending",
+          bloodGroup: formData.bloodGroup,
+          contactNumber: formData.contactNumber,
+        });
+        setIsSuccess(true);
+      } else {
+        setSubmitError(
+          res.error || "We couldn't submit your request right now. Please check your information and try again."
+        );
+        if (res.fieldErrors) {
+          setErrors(res.fieldErrors);
+        }
+      }
+    } catch (err) {
+      setIsSubmitting(false);
+      setSubmitError("We couldn't submit your request right now. Please check your information and try again.");
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -61,6 +97,21 @@ export function BloodRequestForm() {
     if (errors[e.target.id]) {
       setErrors({ ...errors, [e.target.id]: "" });
     }
+    if (submitError) {
+      setSubmitError("");
+    }
+  };
+
+  const handleResetForm = () => {
+    setIsSuccess(false);
+    setSubmittedDetails(null);
+    setSubmitError("");
+    setErrors({});
+    setFormData({
+      patientName: "", patientAge: "", bloodGroup: "", units: "", requirementDate: "",
+      hospitalName: "", hospitalAddress: "", doctorName: "", doctorContact: "",
+      requesterName: "", relationship: "", contactNumber: "", additionalNotes: "",
+    });
   };
 
   return (
@@ -81,7 +132,7 @@ export function BloodRequestForm() {
             className="bg-card border border-border shadow-lg rounded-2xl p-8 md:p-12 relative overflow-hidden"
           >
             <AnimatePresence mode="wait">
-              {isSuccess ? (
+              {isSuccess && submittedDetails ? (
                 <motion.div
                   key="success"
                   initial={{ opacity: 0, y: 20 }}
@@ -91,29 +142,36 @@ export function BloodRequestForm() {
                   <div className="w-24 h-24 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-full flex items-center justify-center mb-6">
                     <CheckCircle2 className="w-12 h-12" />
                   </div>
-                  <h3 className="text-3xl font-display font-bold mb-4">Request Received</h3>
-                  <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
-                    Your request for <span className="font-bold text-foreground">{formData.bloodGroup}</span> blood has been successfully submitted. Our team is reviewing the inventory and will contact you at <span className="font-bold text-foreground">{formData.contactNumber}</span> within 4-6 hours.
+                  <h3 className="text-3xl font-display font-bold mb-2">Blood request submitted successfully.</h3>
+                  <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-6">
+                    Your request for <span className="font-bold text-foreground">{submittedDetails.bloodGroup}</span> blood has been received. Shambu Blood Bank will review your request and contact you at <span className="font-bold text-foreground">{submittedDetails.contactNumber}</span>.
                   </p>
-                  <div className="bg-muted/50 p-6 rounded-lg w-full max-w-md border border-border text-left mb-8">
-                    <h4 className="font-semibold text-foreground mb-2">Next Steps:</h4>
-                    <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
-                      <li>Keep your phone nearby.</li>
-                      <li>Prepare relevant hospital documentation.</li>
-                      <li>In case of a sudden emergency, please call 1-800-GIVE-LIFE immediately instead of waiting.</li>
-                    </ul>
+
+                  <div className="bg-muted/50 p-6 rounded-xl w-full max-w-md border border-border text-left mb-8 space-y-3">
+                    <div className="flex justify-between items-center pb-3 border-b border-border">
+                      <span className="text-sm text-muted-foreground font-medium">Request Reference</span>
+                      <span className="text-base font-bold text-primary font-mono">{submittedDetails.requestNumber}</span>
+                    </div>
+                    <div className="flex justify-between items-center pb-3 border-b border-border">
+                      <span className="text-sm text-muted-foreground font-medium">Current Status</span>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400 text-xs font-bold border border-orange-200 dark:border-orange-800/40">
+                        {submittedDetails.status}
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-foreground text-sm mb-2 mt-2">Next Steps:</h4>
+                      <ul className="text-xs text-muted-foreground space-y-1.5 list-disc list-inside">
+                        <li>Keep your phone line active for verification call.</li>
+                        <li>Have hospital authorization forms ready.</li>
+                        <li>In case of urgent emergency, call our 24/7 hotline immediately.</li>
+                      </ul>
+                    </div>
                   </div>
+
                   <Button 
                     variant="outline" 
                     size="lg"
-                    onClick={() => {
-                      setIsSuccess(false);
-                      setFormData({
-                        patientName: "", bloodGroup: "", units: "", requirementDate: "",
-                        hospitalName: "", hospitalAddress: "", doctorName: "", doctorContact: "",
-                        requesterName: "", relationship: "", contactNumber: "", additionalNotes: "",
-                      });
-                    }}
+                    onClick={handleResetForm}
                   >
                     Submit Another Request
                   </Button>
@@ -128,6 +186,13 @@ export function BloodRequestForm() {
                   onSubmit={handleSubmit}
                   noValidate
                 >
+                  {submitError && (
+                    <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium flex items-center gap-3">
+                      <AlertTriangle className="w-5 h-5 shrink-0" />
+                      <span>{submitError}</span>
+                    </div>
+                  )}
+
                   {/* Patient Details */}
                   <div>
                     <h3 className="text-xl font-bold flex items-center gap-2 border-b border-border pb-4 mb-6">
@@ -147,6 +212,20 @@ export function BloodRequestForm() {
                           aria-invalid={!!errors.patientName}
                         />
                         {errors.patientName && <p className="text-xs text-destructive mt-1">{errors.patientName}</p>}
+                      </div>
+                      <div className="space-y-2">
+                        <label htmlFor="patientAge" className="text-sm font-medium">Patient Age</label>
+                        <input 
+                          id="patientAge" 
+                          type="number" 
+                          min="0" max="120"
+                          value={formData.patientAge}
+                          onChange={handleChange}
+                          className={`w-full h-11 px-4 rounded-md border bg-background transition-all outline-none focus:ring-2 ${errors.patientAge ? "border-destructive focus:ring-destructive focus:border-destructive" : "border-input focus:ring-primary focus:border-primary"}`} 
+                          placeholder="e.g. 35" 
+                          aria-invalid={!!errors.patientAge}
+                        />
+                        {errors.patientAge && <p className="text-xs text-destructive mt-1">{errors.patientAge}</p>}
                       </div>
                       <div className="space-y-2">
                         <label htmlFor="bloodGroup" className="text-sm font-medium">Blood Group Required</label>
@@ -320,7 +399,7 @@ export function BloodRequestForm() {
                   </div>
 
                   <div className="pt-6 border-t border-border">
-                    <Button size="lg" className="w-full md:w-auto md:px-12 text-lg h-14" disabled={isSubmitting}>
+                    <Button type="submit" size="lg" className="w-full md:w-auto md:px-12 text-lg h-14" disabled={isSubmitting}>
                       {isSubmitting ? (
                         <>
                           <Loader2 className="mr-2 w-5 h-5 animate-spin" />
