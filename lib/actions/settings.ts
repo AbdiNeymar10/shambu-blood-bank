@@ -6,13 +6,15 @@ export type NotificationPreferences = {
   smsEmergencyAlerts: boolean;
   emailAppointmentReminders: boolean;
   emailCampaignInvites: boolean;
-  pushDonationReminders: boolean;
+  inventoryShortageAlerts?: boolean;
+  pushDonationReminders?: boolean;
 };
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
   smsEmergencyAlerts: true,
   emailAppointmentReminders: true,
   emailCampaignInvites: true,
+  inventoryShortageAlerts: true,
   pushDonationReminders: false,
 };
 
@@ -71,6 +73,7 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
     smsEmergencyAlerts: meta.notify_sms_emergency ?? DEFAULT_PREFERENCES.smsEmergencyAlerts,
     emailAppointmentReminders: meta.notify_email_appointments ?? DEFAULT_PREFERENCES.emailAppointmentReminders,
     emailCampaignInvites: meta.notify_email_campaigns ?? DEFAULT_PREFERENCES.emailCampaignInvites,
+    inventoryShortageAlerts: meta.notify_inventory_shortages ?? DEFAULT_PREFERENCES.inventoryShortageAlerts,
     pushDonationReminders: meta.notify_push_donations ?? DEFAULT_PREFERENCES.pushDonationReminders,
   };
 }
@@ -89,10 +92,171 @@ export async function saveNotificationPreferences(
       notify_sms_emergency: prefs.smsEmergencyAlerts,
       notify_email_appointments: prefs.emailAppointmentReminders,
       notify_email_campaigns: prefs.emailCampaignInvites,
+      notify_inventory_shortages: prefs.inventoryShortageAlerts,
       notify_push_donations: prefs.pushDonationReminders,
     },
   });
 
   if (error) return { success: false, error: error.message || "Failed to save preferences." };
   return { success: true };
+}
+
+// ---------------------------------------------------------------------------
+// Admin System Settings (Singleton Configuration)
+// ---------------------------------------------------------------------------
+import { createAdminClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+
+export type SystemSettings = {
+  bloodBankName: string;
+  emergencyHotline: string;
+  primaryContactEmail: string;
+  locationAddress: string;
+  smsProvider: "Ethio Telecom Bulk SMS API" | "Twilio SMS Gateway";
+  senderId: string;
+};
+
+export type PublicSystemSettings = {
+  bloodBankName: string;
+  emergencyHotline: string;
+  primaryContactEmail: string;
+  locationAddress: string;
+};
+
+const SINGLETON_SETTINGS_ID = "00000000-0000-0000-0000-000000000001";
+
+const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
+  bloodBankName: "Shambu Blood Bank",
+  emergencyHotline: "+251 57 665 0123",
+  primaryContactEmail: "support@shambu-bloodbank.org",
+  locationAddress: "Shambu Town, Horo Guduru Wollega, Oromia, Ethiopia",
+  smsProvider: "Ethio Telecom Bulk SMS API",
+  senderId: "SHAMBU-BLOOD",
+};
+
+/**
+ * Admin action: Fetches current system settings from Supabase
+ */
+export async function getAdminSystemSettings(): Promise<SystemSettings> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = createAdminClient() as any;
+
+    const { data: row, error } = await supabase
+      .from("system_settings")
+      .select("blood_bank_name, emergency_hotline, primary_contact_email, address, sms_provider, sender_id")
+      .eq("id", SINGLETON_SETTINGS_ID)
+      .maybeSingle();
+
+    if (error || !row) {
+      // Fallback query if id is different or not specified
+      const { data: firstRow } = await supabase
+        .from("system_settings")
+        .select("blood_bank_name, emergency_hotline, primary_contact_email, address, sms_provider, sender_id")
+        .limit(1)
+        .maybeSingle();
+
+      if (firstRow) {
+        return {
+          bloodBankName: firstRow.blood_bank_name || DEFAULT_SYSTEM_SETTINGS.bloodBankName,
+          emergencyHotline: firstRow.emergency_hotline || DEFAULT_SYSTEM_SETTINGS.emergencyHotline,
+          primaryContactEmail: firstRow.primary_contact_email || DEFAULT_SYSTEM_SETTINGS.primaryContactEmail,
+          locationAddress: firstRow.address || DEFAULT_SYSTEM_SETTINGS.locationAddress,
+          smsProvider: (firstRow.sms_provider as any) || DEFAULT_SYSTEM_SETTINGS.smsProvider,
+          senderId: firstRow.sender_id || DEFAULT_SYSTEM_SETTINGS.senderId,
+        };
+      }
+
+      return DEFAULT_SYSTEM_SETTINGS;
+    }
+
+    return {
+      bloodBankName: row.blood_bank_name || DEFAULT_SYSTEM_SETTINGS.bloodBankName,
+      emergencyHotline: row.emergency_hotline || DEFAULT_SYSTEM_SETTINGS.emergencyHotline,
+      primaryContactEmail: row.primary_contact_email || DEFAULT_SYSTEM_SETTINGS.primaryContactEmail,
+      locationAddress: row.address || DEFAULT_SYSTEM_SETTINGS.locationAddress,
+      smsProvider: (row.sms_provider as any) || DEFAULT_SYSTEM_SETTINGS.smsProvider,
+      senderId: row.sender_id || DEFAULT_SYSTEM_SETTINGS.senderId,
+    };
+  } catch (err) {
+    console.error("Error fetching system settings:", err);
+    return DEFAULT_SYSTEM_SETTINGS;
+  }
+}
+
+/**
+ * Safe public query: Returns ONLY non-sensitive organization details
+ */
+export async function getPublicSystemSettings(): Promise<PublicSystemSettings> {
+  const full = await getAdminSystemSettings();
+  return {
+    bloodBankName: full.bloodBankName,
+    emergencyHotline: full.emergencyHotline,
+    primaryContactEmail: full.primaryContactEmail,
+    locationAddress: full.locationAddress,
+  };
+}
+
+/**
+ * Admin action: Saves/Updates system settings in Supabase atomically
+ */
+export async function saveAdminSystemSettings(
+  input: SystemSettings
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const bloodBankName = (input.bloodBankName || "").trim();
+    const emergencyHotline = (input.emergencyHotline || "").trim();
+    const primaryContactEmail = (input.primaryContactEmail || "").trim();
+    const locationAddress = (input.locationAddress || "").trim();
+    const smsProvider = input.smsProvider || "Ethio Telecom Bulk SMS API";
+    const senderId = (input.senderId || "").trim();
+
+    if (!bloodBankName) {
+      return { success: false, error: "Blood Bank Name is required." };
+    }
+    if (!emergencyHotline) {
+      return { success: false, error: "Emergency Hotline Phone is required." };
+    }
+    if (!primaryContactEmail || !primaryContactEmail.includes("@")) {
+      return { success: false, error: "A valid Primary Contact Email is required." };
+    }
+    if (!locationAddress) {
+      return { success: false, error: "Location / Address is required." };
+    }
+    if (!senderId) {
+      return { success: false, error: "Sender ID is required." };
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = createAdminClient() as any;
+
+    const payload = {
+      id: SINGLETON_SETTINGS_ID,
+      blood_bank_name: bloodBankName,
+      emergency_hotline: emergencyHotline,
+      primary_contact_email: primaryContactEmail,
+      address: locationAddress,
+      sms_provider: smsProvider,
+      sender_id: senderId,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from("system_settings")
+      .upsert(payload, { onConflict: "id" });
+
+    if (error) {
+      console.error("Error saving system settings to database:", error);
+      return { success: false, error: "Failed to save system settings to Supabase." };
+    }
+
+    revalidatePath("/admin/settings");
+    revalidatePath("/admin/notifications");
+    revalidatePath("/");
+
+    return { success: true };
+  } catch (err) {
+    console.error("Unexpected error in saveAdminSystemSettings:", err);
+    return { success: false, error: "An unexpected error occurred while saving settings." };
+  }
 }

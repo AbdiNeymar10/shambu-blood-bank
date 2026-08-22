@@ -686,6 +686,40 @@ export interface Database {
           }
         ];
       };
+
+      system_settings: {
+        Row: {
+          id: string;
+          blood_bank_name: string;
+          emergency_hotline: string;
+          primary_contact_email: string;
+          address: string;
+          sms_provider: string;
+          sender_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          blood_bank_name?: string;
+          emergency_hotline?: string;
+          primary_contact_email?: string;
+          address?: string;
+          sms_provider?: string;
+          sender_id?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          blood_bank_name?: string;
+          emergency_hotline?: string;
+          primary_contact_email?: string;
+          address?: string;
+          sms_provider?: string;
+          sender_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [key: string]: {
