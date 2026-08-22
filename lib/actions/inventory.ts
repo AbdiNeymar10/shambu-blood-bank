@@ -282,3 +282,123 @@ export async function getInventoryHospitalOptions(): Promise<Array<{ id: string;
     return [];
   }
 }
+
+export type PublicBloodStatus = "safe" | "low" | "critical";
+
+export type PublicBloodInventoryCard = {
+  type: BloodGroup;
+  percentage: number;
+  status: PublicBloodStatus;
+  label: "Adequate Supply" | "Low Inventory" | "Critical Shortage";
+  unitsAvailable: number;
+};
+
+export type PublicAvailabilityData = {
+  lastUpdated: string;
+  items: PublicBloodInventoryCard[];
+};
+
+/**
+ * Fetches aggregated blood inventory availability for the public Real-Time Inventory page.
+ */
+export async function getPublicAvailabilityData(
+  hospitalIdFilter?: string,
+  bloodGroupFilter?: string
+): Promise<PublicAvailabilityData> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createClient()) as any;
+
+    let query = supabase
+      .from("blood_inventory")
+      .select("blood_group, units_available, hospital_id, updated_at");
+
+    if (hospitalIdFilter && hospitalIdFilter !== "all") {
+      query = query.eq("hospital_id", hospitalIdFilter);
+    }
+
+    const { data: rows, error } = await query;
+
+    if (error || !rows) {
+      console.error("Error querying public inventory:", error);
+    }
+
+    const inventoryRows = rows || [];
+
+    const totalsPerGroup: Record<string, number> = {};
+    let latestUpdatedAt: Date | null = null;
+
+    inventoryRows.forEach((row: any) => {
+      const bg = row.blood_group as string;
+      const units = row.units_available || 0;
+      totalsPerGroup[bg] = (totalsPerGroup[bg] || 0) + units;
+
+      if (row.updated_at) {
+        const uDate = new Date(row.updated_at);
+        if (!latestUpdatedAt || uDate > latestUpdatedAt) {
+          latestUpdatedAt = uDate;
+        }
+      }
+    });
+
+    const targetCapacityPerGroup = 50; // Target capacity threshold for 100% level
+
+    const items: PublicBloodInventoryCard[] = ALL_BLOOD_GROUPS.map((bg) => {
+      const units = totalsPerGroup[bg] || 0;
+      const percentage = Math.min(100, Math.round((units / targetCapacityPerGroup) * 100));
+
+      let status: PublicBloodStatus = "safe";
+      let label: "Adequate Supply" | "Low Inventory" | "Critical Shortage" = "Adequate Supply";
+
+      if (units < 10) {
+        status = "critical";
+        label = "Critical Shortage";
+      } else if (units <= 19) {
+        status = "low";
+        label = "Low Inventory";
+      } else {
+        status = "safe";
+        label = "Adequate Supply";
+      }
+
+      return {
+        type: bg,
+        percentage,
+        status,
+        label,
+        unitsAvailable: units,
+      };
+    }).filter((item) => {
+      if (!bloodGroupFilter || bloodGroupFilter === "all") return true;
+      return item.type === bloodGroupFilter;
+    });
+
+    let lastUpdated = "Just now";
+    if (latestUpdatedAt) {
+      const diffMins = Math.floor((new Date().getTime() - (latestUpdatedAt as Date).getTime()) / 60000);
+      if (diffMins < 1) lastUpdated = "Just now";
+      else if (diffMins < 60) lastUpdated = `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
+      else {
+        const hours = Math.floor(diffMins / 60);
+        lastUpdated = `${hours} hour${hours > 1 ? "s" : ""} ago`;
+      }
+    }
+
+    return {
+      lastUpdated,
+      items,
+    };
+  } catch (err) {
+    console.error("Error in getPublicAvailabilityData:", err);
+    return {
+      lastUpdated: "Just now",
+      items: ALL_BLOOD_GROUPS.map((bg) => ({
+        type: bg,
+        percentage: 0,
+        status: "critical",
+        label: "Critical Shortage",
+        unitsAvailable: 0,
+      })),
+    };
+  }
+}
