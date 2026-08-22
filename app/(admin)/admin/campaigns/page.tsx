@@ -11,12 +11,13 @@ import {
   X,
   AlertTriangle,
   Users,
-  Image as ImageIcon,
+  Edit3,
   Link as LinkIcon
 } from "lucide-react";
 import { 
   getAdminCampaignsData, 
   createAdminCampaign, 
+  updateAdminCampaign,
   getCampaignDetails,
   type AdminCampaignCard,
   type CampaignVolunteerItem
@@ -47,6 +48,20 @@ export default function AdminCampaignsPage() {
   });
   const [isCreateSubmitting, setIsCreateSubmitting] = useState(false);
   const [createError, setCreateError] = useState("");
+
+  // Edit Campaign Modal State
+  const [editingCampaign, setEditingCampaign] = useState<AdminCampaignCard | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: "",
+    description: "",
+    location: "",
+    startDate: "",
+    endDate: "",
+    targetUnits: 150,
+    imageUrl: "",
+  });
+  const [isEditSubmitting, setIsEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState("");
 
   // Details Modal State
   const [selectedDetails, setSelectedDetails] = useState<{
@@ -103,6 +118,42 @@ export default function AdminCampaignsPage() {
       loadData();
     } else {
       setCreateError(res.error || "Failed to create campaign.");
+    }
+  };
+
+  const handleOpenEditModal = (camp: AdminCampaignCard) => {
+    setEditingCampaign(camp);
+    setEditError("");
+    setEditForm({
+      title: camp.title,
+      description: camp.description || "",
+      location: camp.location,
+      startDate: camp.startDate,
+      endDate: camp.endDate,
+      targetUnits: camp.targetUnits,
+      imageUrl: camp.imageUrl || PRESET_CAMPAIGN_IMAGES[0].url,
+    });
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCampaign) return;
+    if (!editForm.title || !editForm.location || !editForm.startDate || !editForm.endDate) {
+      setEditError("Please fill out campaign title, location, start date, and end date.");
+      return;
+    }
+
+    setIsEditSubmitting(true);
+    setEditError("");
+
+    const res = await updateAdminCampaign(editingCampaign.id, editForm);
+    setIsEditSubmitting(false);
+
+    if (res.success) {
+      setEditingCampaign(null);
+      loadData();
+    } else {
+      setEditError(res.error || "Failed to update campaign.");
     }
   };
 
@@ -175,7 +226,16 @@ export default function AdminCampaignsPage() {
                     {camp.status === "Active" ? <Clock className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                     {camp.status}
                   </span>
-                  <span className="text-xs font-semibold text-muted-foreground">Target: {camp.targetUnits} Units</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-muted-foreground">Target: {camp.targetUnits} Units</span>
+                    <button 
+                      onClick={() => handleOpenEditModal(camp)}
+                      className="p-1 text-muted-foreground hover:text-primary transition-colors"
+                      title="Edit Campaign"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 <h3 className="text-lg font-bold text-foreground mb-2">{camp.title}</h3>
@@ -204,7 +264,13 @@ export default function AdminCampaignsPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 flex justify-end gap-2">
+                <div className="mt-4 pt-3 flex justify-between items-center">
+                  <button 
+                    onClick={() => handleOpenEditModal(camp)}
+                    className="text-xs font-bold text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" /> Edit
+                  </button>
                   <button 
                     onClick={() => handleOpenDetails(camp.id)}
                     className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1"
@@ -255,7 +321,6 @@ export default function AdminCampaignsPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center justify-between">
                   <span>Campaign Picture / Banner URL</span>
-                  <span className="text-xs text-muted-foreground font-normal">Choose preset or enter URL</span>
                 </label>
                 <div className="relative">
                   <LinkIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -354,6 +419,145 @@ export default function AdminCampaignsPage() {
                 >
                   {isCreateSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                   Create Campaign
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Campaign Modal */}
+      {editingCampaign && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl w-full max-w-lg space-y-5 relative max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <h3 className="text-xl font-bold text-foreground">Edit Campaign</h3>
+              <button 
+                onClick={() => setEditingCampaign(null)}
+                className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {editError && (
+              <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-medium flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{editError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Campaign Title</label>
+                <input 
+                  type="text"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              {/* Campaign Image URL & Presets */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center justify-between">
+                  <span>Campaign Picture / Banner URL</span>
+                </label>
+                <div className="relative">
+                  <LinkIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input 
+                    type="url"
+                    value={editForm.imageUrl}
+                    onChange={(e) => setEditForm({ ...editForm, imageUrl: e.target.value })}
+                    placeholder="https://images.unsplash.com/..."
+                    className="w-full h-11 pl-10 pr-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                {/* Presets */}
+                <div className="grid grid-cols-4 gap-2 pt-1">
+                  {PRESET_CAMPAIGN_IMAGES.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, imageUrl: preset.url })}
+                      className={cn(
+                        "relative rounded-lg overflow-hidden border-2 h-14 transition-all group",
+                        editForm.imageUrl === preset.url ? "border-primary ring-2 ring-primary/20" : "border-border opacity-70 hover:opacity-100"
+                      )}
+                    >
+                      <img src={preset.url} alt={preset.label} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Location</label>
+                <input 
+                  type="text"
+                  value={editForm.location}
+                  onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                  className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Start Date</label>
+                  <input 
+                    type="date"
+                    value={editForm.startDate}
+                    onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                    className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">End Date</label>
+                  <input 
+                    type="date"
+                    value={editForm.endDate}
+                    onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
+                    className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Target Units</label>
+                <input 
+                  type="number"
+                  min="1"
+                  value={editForm.targetUnits}
+                  onChange={(e) => setEditForm({ ...editForm, targetUnits: parseInt(e.target.value, 10) || 100 })}
+                  className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm font-bold outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Description (Optional)</label>
+                <input 
+                  type="text"
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div className="pt-4 flex justify-end gap-3 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setEditingCampaign(null)}
+                  className="px-4 py-2.5 rounded-xl border border-input text-sm font-semibold hover:bg-secondary transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isEditSubmitting}
+                  className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2"
+                >
+                  {isEditSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Update Campaign
                 </button>
               </div>
             </form>
