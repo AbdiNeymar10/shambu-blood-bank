@@ -5,12 +5,20 @@ import { motion, useInView } from "framer-motion";
 import { Users, Droplets, Activity, Heart } from "lucide-react";
 import { Container } from "@/components/shared";
 import { staggerContainer, fadeInUp, viewportOnce } from "@/lib/motion";
+import { getPublicHomeImpactStats } from "@/lib/actions/dashboard";
 
-const stats = [
-  { label: "Registered Donors", value: 12500, icon: Users, suffix: "+" },
-  { label: "Blood Units Collected", value: 8400, icon: Droplets, suffix: "+" },
-  { label: "Emergency Requests Fulfilled", value: 3200, icon: Activity, suffix: "+" },
-  { label: "Lives Saved", value: 25000, icon: Heart, suffix: "+" },
+type StatItem = {
+  label: string;
+  value: number;
+  icon: any;
+  suffix: string;
+};
+
+const DEFAULT_STATS: StatItem[] = [
+  { label: "Registered Donors", value: 0, icon: Users, suffix: "+" },
+  { label: "Blood Units Collected", value: 0, icon: Droplets, suffix: "+" },
+  { label: "Emergency Requests Fulfilled", value: 0, icon: Activity, suffix: "+" },
+  { label: "Lives Saved", value: 0, icon: Heart, suffix: "+" },
 ];
 
 function AnimatedCounter({ value, suffix = "" }: { value: number; suffix?: string }) {
@@ -47,6 +55,25 @@ function AnimatedCounter({ value, suffix = "" }: { value: number; suffix?: strin
 }
 
 export function ImpactStats() {
+  const [stats, setStats] = useState<StatItem[]>(DEFAULT_STATS);
+
+  useEffect(() => {
+    async function loadImpactStats() {
+      try {
+        const data = await getPublicHomeImpactStats();
+        setStats([
+          { label: "Registered Donors", value: data.registeredDonors, icon: Users, suffix: "+" },
+          { label: "Blood Units Collected", value: data.bloodUnitsCollected, icon: Droplets, suffix: "+" },
+          { label: "Emergency Requests Fulfilled", value: data.requestsFulfilled, icon: Activity, suffix: "+" },
+          { label: "Lives Saved", value: data.livesSaved, icon: Heart, suffix: "+" },
+        ]);
+      } catch (err) {
+        console.error("Error loading home impact stats:", err);
+      }
+    }
+    loadImpactStats();
+  }, []);
+
   return (
     <section className="section-padding bg-background relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-red-500/8 via-transparent to-transparent opacity-60 pointer-events-none" />

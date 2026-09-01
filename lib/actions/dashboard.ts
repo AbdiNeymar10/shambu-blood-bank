@@ -294,3 +294,65 @@ export async function getAdminDashboardData(): Promise<DashboardData> {
     };
   }
 }
+
+export type HomeImpactStatsData = {
+  registeredDonors: number;
+  bloodUnitsCollected: number;
+  requestsFulfilled: number;
+  livesSaved: number;
+};
+
+/**
+ * Fetches real impact statistics from Supabase for the Home Page ImpactStats component.
+ */
+export async function getPublicHomeImpactStats(): Promise<HomeImpactStatsData> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createClient()) as any;
+
+    const [donorsRes, donationsRes, requestsRes] = await Promise.all([
+      // 1. Total registered donors count
+      supabase
+        .from("donor_profiles")
+        .select("*", { count: "exact", head: true }),
+
+      // 2. Completed blood donations
+      supabase
+        .from("blood_donations")
+        .select("units_donated")
+        .eq("status", "completed"),
+
+      // 3. Emergency / fulfilled blood requests count
+      supabase
+        .from("blood_requests")
+        .select("*", { count: "exact", head: true })
+        .in("status", ["fulfilled", "approved"]),
+    ]);
+
+    const registeredDonors = donorsRes.count ?? 0;
+    const requestsFulfilled = requestsRes.count ?? 0;
+
+    const donationRows = donationsRes.data || [];
+    let bloodUnitsCollected = 0;
+    donationRows.forEach((row: any) => {
+      bloodUnitsCollected += Number(row.units_donated) || 1;
+    });
+
+    const livesSaved = bloodUnitsCollected * 3;
+
+    return {
+      registeredDonors,
+      bloodUnitsCollected,
+      requestsFulfilled,
+      livesSaved,
+    };
+  } catch (error) {
+    console.error("Error fetching public home impact stats from Supabase:", error);
+    return {
+      registeredDonors: 0,
+      bloodUnitsCollected: 0,
+      requestsFulfilled: 0,
+      livesSaved: 0,
+    };
+  }
+}
