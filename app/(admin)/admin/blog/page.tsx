@@ -50,6 +50,7 @@ export default function AdminBlogPage() {
     excerpt: string;
     content: string;
     coverImageUrl: string;
+    images: string[];
     status: "Published" | "Draft";
   }>({
     title: "",
@@ -57,6 +58,7 @@ export default function AdminBlogPage() {
     excerpt: "",
     content: "",
     coverImageUrl: PRESET_IMAGES[0].url,
+    images: [PRESET_IMAGES[0].url],
     status: "Published",
   });
   const [isCreateSubmitting, setIsCreateSubmitting] = useState(false);
@@ -70,6 +72,7 @@ export default function AdminBlogPage() {
     excerpt: string;
     content: string;
     coverImageUrl: string;
+    images: string[];
     status: "Published" | "Draft";
   }>({
     title: "",
@@ -77,6 +80,7 @@ export default function AdminBlogPage() {
     excerpt: "",
     content: "",
     coverImageUrl: "",
+    images: [],
     status: "Published",
   });
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
@@ -98,6 +102,52 @@ export default function AdminBlogPage() {
     setCreateError("");
   };
 
+  const handleAddImage = (isEdit: boolean, urlToAdd = "") => {
+    if (isEdit) {
+      setEditForm((prev) => {
+        const nextImgs = [...prev.images, urlToAdd];
+        return { ...prev, images: nextImgs, coverImageUrl: prev.coverImageUrl || urlToAdd };
+      });
+    } else {
+      setCreateForm((prev) => {
+        const nextImgs = [...prev.images, urlToAdd];
+        return { ...prev, images: nextImgs, coverImageUrl: prev.coverImageUrl || urlToAdd };
+      });
+    }
+  };
+
+  const handleRemoveImage = (isEdit: boolean, index: number) => {
+    if (isEdit) {
+      setEditForm((prev) => {
+        const next = [...prev.images];
+        next.splice(index, 1);
+        return { ...prev, images: next, coverImageUrl: next[0] || "" };
+      });
+    } else {
+      setCreateForm((prev) => {
+        const next = [...prev.images];
+        next.splice(index, 1);
+        return { ...prev, images: next, coverImageUrl: next[0] || "" };
+      });
+    }
+  };
+
+  const handleImageChange = (isEdit: boolean, index: number, value: string) => {
+    if (isEdit) {
+      setEditForm((prev) => {
+        const next = [...prev.images];
+        next[index] = value;
+        return { ...prev, images: next, coverImageUrl: next[0] || value };
+      });
+    } else {
+      setCreateForm((prev) => {
+        const next = [...prev.images];
+        next[index] = value;
+        return { ...prev, images: next, coverImageUrl: next[0] || value };
+      });
+    }
+  };
+
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createForm.title.trim() || !createForm.content.trim()) {
@@ -108,7 +158,14 @@ export default function AdminBlogPage() {
     setIsCreateSubmitting(true);
     setCreateError("");
 
-    const res = await createAdminArticle(createForm);
+    const validImages = createForm.images.filter((img) => img.trim().length > 0);
+    const primaryCover = validImages[0] || createForm.coverImageUrl || PRESET_IMAGES[0].url;
+
+    const res = await createAdminArticle({
+      ...createForm,
+      coverImageUrl: primaryCover,
+      images: validImages.length > 0 ? validImages : [primaryCover],
+    });
     setIsCreateSubmitting(false);
 
     if (res.success) {
@@ -119,6 +176,7 @@ export default function AdminBlogPage() {
         excerpt: "",
         content: "",
         coverImageUrl: PRESET_IMAGES[0].url,
+        images: [PRESET_IMAGES[0].url],
         status: "Published",
       });
       loadData();
@@ -130,12 +188,20 @@ export default function AdminBlogPage() {
   const handleOpenEditModal = (article: AdminArticleItem) => {
     setEditingArticle(article);
     setEditError("");
+    const articleImages =
+      article.images && article.images.length > 0
+        ? article.images
+        : article.coverImageUrl
+        ? [article.coverImageUrl]
+        : [PRESET_IMAGES[0].url];
+
     setEditForm({
       title: article.title,
       category: article.category,
       excerpt: article.excerpt,
       content: article.content,
-      coverImageUrl: article.coverImageUrl || "",
+      coverImageUrl: article.coverImageUrl || articleImages[0] || "",
+      images: articleImages,
       status: article.status,
     });
   };
@@ -151,7 +217,14 @@ export default function AdminBlogPage() {
     setIsEditSubmitting(true);
     setEditError("");
 
-    const res = await updateAdminArticle(editingArticle.id, editForm);
+    const validImages = editForm.images.filter((img) => img.trim().length > 0);
+    const primaryCover = validImages[0] || editForm.coverImageUrl || PRESET_IMAGES[0].url;
+
+    const res = await updateAdminArticle(editingArticle.id, {
+      ...editForm,
+      coverImageUrl: primaryCover,
+      images: validImages.length > 0 ? validImages : [primaryCover],
+    });
     setIsEditSubmitting(false);
 
     if (res.success) {
@@ -230,7 +303,14 @@ export default function AdminBlogPage() {
                           </div>
                         )}
                         <div>
-                          <div className="font-semibold text-sm text-foreground line-clamp-1">{article.title}</div>
+                          <div className="font-semibold text-sm text-foreground line-clamp-1 flex items-center gap-2">
+                            <span>{article.title}</span>
+                            {article.images && article.images.length > 1 && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 shrink-0">
+                                <ImageIcon className="w-3 h-3" /> {article.images.length} Photos
+                              </span>
+                            )}
+                          </div>
                           {article.excerpt && (
                             <div className="text-xs text-muted-foreground line-clamp-1">{article.excerpt}</div>
                           )}
@@ -310,43 +390,84 @@ export default function AdminBlogPage() {
                 />
               </div>
 
-              {/* Cover Picture Section */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center justify-between">
-                  <span>Featured Picture / Cover Image URL</span>
-                  <span className="text-xs text-muted-foreground font-normal">Choose preset or enter URL</span>
-                </label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <LinkIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <input 
-                      type="url"
-                      value={createForm.coverImageUrl}
-                      onChange={(e) => setCreateForm({ ...createForm, coverImageUrl: e.target.value })}
-                      placeholder="https://images.unsplash.com/..."
-                      className="w-full h-11 pl-10 pr-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
-                    />
+              {/* Multiple Pictures Section */}
+              <div className="space-y-3 p-4 bg-secondary/30 rounded-2xl border border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4 text-primary" /> Article Pictures & Gallery ({createForm.images.length})
+                    </label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Add multiple pictures for your article. Image #1 serves as the main cover photo.
+                    </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => handleAddImage(false, "")}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-lg hover:bg-primary/20 transition-colors shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Picture
+                  </button>
+                </div>
+
+                {/* Picture List Inputs */}
+                <div className="space-y-2">
+                  {createForm.images.map((imgUrl, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <div className="w-10 h-10 rounded-lg border border-border overflow-hidden bg-background shrink-0 flex items-center justify-center relative">
+                        {imgUrl ? (
+                          <img src={imgUrl} alt={`Picture ${idx + 1}`} className="w-full h-full object-cover" />
+                        ) : (
+                          <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                        )}
+                        {idx === 0 && (
+                          <span className="absolute bottom-0 inset-x-0 bg-primary text-[7px] font-bold text-primary-foreground text-center py-0.2 uppercase">
+                            Cover
+                          </span>
+                        )}
+                      </div>
+                      <div className="relative flex-1">
+                        <LinkIcon className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <input
+                          type="url"
+                          value={imgUrl}
+                          onChange={(e) => handleImageChange(false, idx, e.target.value)}
+                          placeholder={idx === 0 ? "Main Cover Picture URL..." : `Gallery Picture #${idx + 1} URL...`}
+                          className="w-full h-10 pl-9 pr-3 rounded-xl border border-input bg-background text-xs outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                      {createForm.images.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(false, idx)}
+                          className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors shrink-0"
+                          title="Remove Picture"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
 
                 {/* Preset Choices */}
-                <div className="grid grid-cols-4 gap-2 pt-1">
-                  {PRESET_IMAGES.map((preset, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setCreateForm({ ...createForm, coverImageUrl: preset.url })}
-                      className={cn(
-                        "relative rounded-lg overflow-hidden border-2 h-14 transition-all group",
-                        createForm.coverImageUrl === preset.url ? "border-primary ring-2 ring-primary/20" : "border-border opacity-70 hover:opacity-100"
-                      )}
-                    >
-                      <img src={preset.url} alt={preset.label} className="w-full h-full object-cover" />
-                      <span className="absolute inset-0 bg-black/40 text-[9px] font-bold text-white flex items-center justify-center p-1 text-center line-clamp-2">
-                        {preset.label}
-                      </span>
-                    </button>
-                  ))}
+                <div className="pt-2 border-t border-border/60">
+                  <span className="text-[11px] font-semibold text-muted-foreground block mb-1.5">Click preset to add to article pictures:</span>
+                  <div className="grid grid-cols-4 gap-2">
+                    {PRESET_IMAGES.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleAddImage(false, preset.url)}
+                        className="relative rounded-lg overflow-hidden border border-border h-11 hover:border-primary transition-all group"
+                      >
+                        <img src={preset.url} alt={preset.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        <span className="absolute inset-0 bg-black/50 text-[9px] font-bold text-white flex items-center justify-center p-1 text-center line-clamp-2">
+                          + {preset.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -452,36 +573,84 @@ export default function AdminBlogPage() {
                 />
               </div>
 
-              {/* Cover Picture Section */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center justify-between">
-                  <span>Featured Picture / Cover Image URL</span>
-                </label>
-                <div className="relative">
-                  <LinkIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <input 
-                    type="url"
-                    value={editForm.coverImageUrl}
-                    onChange={(e) => setEditForm({ ...editForm, coverImageUrl: e.target.value })}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full h-11 pl-10 pr-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
-                  />
+              {/* Multiple Pictures Section */}
+              <div className="space-y-3 p-4 bg-secondary/30 rounded-2xl border border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4 text-primary" /> Article Pictures & Gallery ({editForm.images.length})
+                    </label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Add multiple pictures for your article. Image #1 serves as the main cover photo.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleAddImage(true, "")}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-lg hover:bg-primary/20 transition-colors shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Picture
+                  </button>
                 </div>
-                {/* Preset Choices */}
-                <div className="grid grid-cols-4 gap-2 pt-1">
-                  {PRESET_IMAGES.map((preset, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setEditForm({ ...editForm, coverImageUrl: preset.url })}
-                      className={cn(
-                        "relative rounded-lg overflow-hidden border-2 h-14 transition-all group",
-                        editForm.coverImageUrl === preset.url ? "border-primary ring-2 ring-primary/20" : "border-border opacity-70 hover:opacity-100"
+
+                {/* Picture List Inputs */}
+                <div className="space-y-2">
+                  {editForm.images.map((imgUrl, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <div className="w-10 h-10 rounded-lg border border-border overflow-hidden bg-background shrink-0 flex items-center justify-center relative">
+                        {imgUrl ? (
+                          <img src={imgUrl} alt={`Picture ${idx + 1}`} className="w-full h-full object-cover" />
+                        ) : (
+                          <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                        )}
+                        {idx === 0 && (
+                          <span className="absolute bottom-0 inset-x-0 bg-primary text-[7px] font-bold text-primary-foreground text-center py-0.2 uppercase">
+                            Cover
+                          </span>
+                        )}
+                      </div>
+                      <div className="relative flex-1">
+                        <LinkIcon className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <input
+                          type="url"
+                          value={imgUrl}
+                          onChange={(e) => handleImageChange(true, idx, e.target.value)}
+                          placeholder={idx === 0 ? "Main Cover Picture URL..." : `Gallery Picture #${idx + 1} URL...`}
+                          className="w-full h-10 pl-9 pr-3 rounded-xl border border-input bg-background text-xs outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                      {editForm.images.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(true, idx)}
+                          className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors shrink-0"
+                          title="Remove Picture"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       )}
-                    >
-                      <img src={preset.url} alt={preset.label} className="w-full h-full object-cover" />
-                    </button>
+                    </div>
                   ))}
+                </div>
+
+                {/* Preset Choices */}
+                <div className="pt-2 border-t border-border/60">
+                  <span className="text-[11px] font-semibold text-muted-foreground block mb-1.5">Click preset to add to article pictures:</span>
+                  <div className="grid grid-cols-4 gap-2">
+                    {PRESET_IMAGES.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleAddImage(true, preset.url)}
+                        className="relative rounded-lg overflow-hidden border border-border h-11 hover:border-primary transition-all group"
+                      >
+                        <img src={preset.url} alt={preset.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        <span className="absolute inset-0 bg-black/50 text-[9px] font-bold text-white flex items-center justify-center p-1 text-center line-clamp-2">
+                          + {preset.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
