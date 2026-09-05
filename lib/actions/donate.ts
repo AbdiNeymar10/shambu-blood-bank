@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/server";
 import type { BloodGroup, AppointmentStatus } from "@/types/database.types";
 
@@ -195,6 +196,11 @@ export async function registerDonorAppointment(
         error: "We couldn't schedule your appointment right now. Please check your information and try again.",
       };
     }
+
+    try {
+      revalidatePath("/admin/appointments");
+      revalidatePath("/donor/appointments");
+    } catch {}
 
     return {
       success: true,
