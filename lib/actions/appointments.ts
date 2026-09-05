@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import type { BloodGroup } from "@/types/database.types";
 
 export type AppointmentStatus =
@@ -71,7 +72,7 @@ export type AdminAppointmentsData = {
 export async function getAdminAppointmentsData(): Promise<AdminAppointmentsData> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = (await createClient()) as any;
+    const supabase = createAdminClient() as any;
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -100,18 +101,18 @@ export async function getAdminAppointmentsData(): Promise<AdminAppointmentsData>
         .lte("appointment_date", todayEnd.toISOString())
         .eq("status", "completed"),
 
-      // 3. Pending confirmation count (scheduled)
+      // 3. Pending confirmation count (scheduled / pending)
       supabase
         .from("appointments")
         .select("*", { count: "exact", head: true })
-        .eq("status", "scheduled"),
+        .or("status.eq.scheduled,status.eq.pending"),
 
-      // 4. Upcoming appointment schedule (top 5)
+      // 4. Appointment schedule (most recent appointments first)
       supabase
         .from("appointments")
-        .select("id, appointment_date, status, notes, donor_profiles(id, blood_group, users(full_name, phone)), hospitals(name)")
-        .order("appointment_date", { ascending: true })
-        .limit(5),
+        .select("id, appointment_date, status, notes, created_at, donor_profiles(id, blood_group, users(full_name, phone)), hospitals(name)")
+        .order("created_at", { ascending: false })
+        .limit(100),
     ]);
 
     const todaysAppointments = todaysAppointmentsRes.count ?? 0;
@@ -188,7 +189,7 @@ export async function getAdminAppointmentsData(): Promise<AdminAppointmentsData>
 export async function processAppointmentCheckIn(appointmentId: string) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = (await createClient()) as any;
+    const supabase = createAdminClient() as any;
     const { error } = await supabase
       .from("appointments")
       .update({ status: "completed" })
@@ -199,6 +200,10 @@ export async function processAppointmentCheckIn(appointmentId: string) {
       return { success: false, error: "Failed to process check-in." };
     }
 
+    try {
+      revalidatePath("/admin/appointments");
+      revalidatePath("/donor/appointments");
+    } catch {}
     return { success: true };
   } catch (err) {
     console.error("Unexpected error in processAppointmentCheckIn:", err);
@@ -218,7 +223,7 @@ export async function bookAdminAppointment(input: {
 }) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = (await createClient()) as any;
+    const supabase = createAdminClient() as any;
 
     const dateTimeStr = input.time
       ? `${input.date}T${input.time}:00`
@@ -242,6 +247,10 @@ export async function bookAdminAppointment(input: {
       return { success: false, error: "Failed to book appointment." };
     }
 
+    try {
+      revalidatePath("/admin/appointments");
+      revalidatePath("/donor/appointments");
+    } catch {}
     return { success: true };
   } catch (err) {
     console.error("Unexpected error in bookAdminAppointment:", err);
@@ -255,7 +264,7 @@ export async function bookAdminAppointment(input: {
 export async function getBookingOptions() {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = (await createClient()) as any;
+    const supabase = createAdminClient() as any;
 
     const [donorsRes, hospitalsRes] = await Promise.all([
       supabase
@@ -298,9 +307,11 @@ export async function getDonorAppointments(): Promise<{
 }> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = (await createClient()) as any;
-    const { data: { user } } = await supabase.auth.getUser();
+    const clientSupabase = (await createClient()) as any;
+    const { data: { user } } = await clientSupabase.auth.getUser();
     if (!user) return { appointments: [], usingMock: false };
+
+    const supabase = createAdminClient() as any;
 
     const { data: userRow } = await supabase
       .from("users").select("id").eq("auth_id", user.id).maybeSingle();
@@ -314,7 +325,7 @@ export async function getDonorAppointments(): Promise<{
       .from("appointments")
       .select("*, hospitals(name, address, city, phone)")
       .eq("donor_id", profile.id)
-      .order("appointment_date", { ascending: false });
+      .order("created_at", { ascending: false });
 
     if (error || !data) return { appointments: [], usingMock: false };
 
@@ -351,7 +362,7 @@ export async function getDonorAppointments(): Promise<{
 export async function getHospitals(): Promise<HospitalItem[]> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = (await createClient()) as any;
+    const supabase = createAdminClient() as any;
     const { data } = await supabase.from("hospitals").select("*");
     return (data || []) as HospitalItem[];
   } catch {
@@ -367,16 +378,50 @@ export async function createAppointment(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = (await createClient()) as any;
-    const { data: { user } } = await supabase.auth.getUser();
+    const clientSupabase = (await createClient()) as any;
+    const { data: { user } } = await clientSupabase.auth.getUser();
     if (!user) return { success: false, error: "Not authenticated" };
 
-    const { data: userRow } = await supabase
+    const supabase = createAdminClient() as any;
+
+    let { data: userRow } = await supabase
       .from("users").select("id").eq("auth_id", user.id).maybeSingle();
+
+    if (!userRow?.id) {
+      const { data: newUser } = await supabase
+        .from("users")
+        .insert({
+          auth_id: user.id,
+          email: user.email || `donor_${user.id.slice(0, 8)}@shambubloodbank.org`,
+          full_name: user.user_metadata?.full_name || user.email?.split("@")[0] || "Donor",
+          role: "donor",
+          is_active: true,
+        })
+        .select("id")
+        .single();
+      userRow = newUser;
+    }
+
     if (!userRow?.id) return { success: false, error: "User profile not found" };
 
-    const { data: profile } = await supabase
+    let { data: profile } = await supabase
       .from("donor_profiles").select("id").eq("user_id", userRow.id).maybeSingle();
+
+    if (!profile?.id) {
+      const { data: newProfile } = await supabase
+        .from("donor_profiles")
+        .insert({
+          user_id: userRow.id,
+          blood_group: "O+",
+          date_of_birth: "1998-01-01",
+          city: "Shambu",
+          is_available: true,
+        })
+        .select("id")
+        .single();
+      profile = newProfile;
+    }
+
     if (!profile?.id) return { success: false, error: "Donor profile not found" };
 
     const dateTimeStr = time ? `${date}T${time}:00` : `${date}T09:00:00`;
@@ -391,6 +436,11 @@ export async function createAppointment(
     });
 
     if (error) return { success: false, error: error.message };
+
+    try {
+      revalidatePath("/admin/appointments");
+      revalidatePath("/donor/appointments");
+    } catch {}
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message };
@@ -400,13 +450,18 @@ export async function createAppointment(
 export async function cancelAppointment(id: string): Promise<{ success: boolean; error?: string }> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = (await createClient()) as any;
+    const supabase = createAdminClient() as any;
     const { error } = await supabase
       .from("appointments")
       .update({ status: "cancelled" })
       .eq("id", id);
 
     if (error) return { success: false, error: error.message };
+
+    try {
+      revalidatePath("/admin/appointments");
+      revalidatePath("/donor/appointments");
+    } catch {}
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message };
@@ -420,7 +475,7 @@ export async function rescheduleAppointment(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = (await createClient()) as any;
+    const supabase = createAdminClient() as any;
     const dateTimeStr = newTime ? `${newDate}T${newTime}:00` : `${newDate}T09:00:00`;
     const apptDateIso = new Date(dateTimeStr).toISOString();
 
@@ -430,6 +485,11 @@ export async function rescheduleAppointment(
       .eq("id", id);
 
     if (error) return { success: false, error: error.message };
+
+    try {
+      revalidatePath("/admin/appointments");
+      revalidatePath("/donor/appointments");
+    } catch {}
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message };
