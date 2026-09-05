@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 export type AdminArticleItem = {
@@ -15,6 +16,7 @@ export type AdminArticleItem = {
   views: number;
   isPublished: boolean;
   coverImageUrl?: string;
+  images: string[];
 };
 
 export type PublicArticleItem = {
@@ -28,7 +30,64 @@ export type PublicArticleItem = {
   publishDate: string;
   readTime: string;
   coverImageUrl: string;
+  images: string[];
 };
+
+/**
+ * Parses single or multiple picture URLs from cover_image_url field.
+ */
+function parseImageUrls(rawUrl?: string | null): { coverImageUrl: string; images: string[] } {
+  const defaultImg = "https://images.unsplash.com/photo-1579684385127-1ef15d508118?q=80&w=1200&auto=format&fit=crop";
+  if (!rawUrl || !rawUrl.trim()) {
+    return { coverImageUrl: defaultImg, images: [defaultImg] };
+  }
+
+  const str = rawUrl.trim();
+  if (str.startsWith("[") && str.endsWith("]")) {
+    try {
+      const parsed = JSON.parse(str);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const validImgs = parsed.map((s: string) => String(s).trim()).filter(Boolean);
+        if (validImgs.length > 0) {
+          return { coverImageUrl: validImgs[0], images: validImgs };
+        }
+      }
+    } catch {}
+  }
+
+  if (str.includes("|||")) {
+    const parts = str.split("|||").map((s) => s.trim()).filter(Boolean);
+    if (parts.length > 0) {
+      return { coverImageUrl: parts[0], images: parts };
+    }
+  }
+
+  return { coverImageUrl: str, images: [str] };
+}
+
+/**
+ * Encodes an array of picture URLs for storage in cover_image_url.
+ */
+function encodeImageUrls(images?: string[], primaryCover?: string): string {
+  const list: string[] = [];
+
+  if (primaryCover && primaryCover.trim()) {
+    list.push(primaryCover.trim());
+  }
+
+  if (Array.isArray(images)) {
+    images.forEach((img) => {
+      const trimmed = img ? img.trim() : "";
+      if (trimmed && !list.includes(trimmed)) {
+        list.push(trimmed);
+      }
+    });
+  }
+
+  if (list.length === 0) return "";
+  if (list.length === 1) return list[0];
+  return JSON.stringify(list);
+}
 
 /**
  * Fetches all blog posts for the Admin Blog Management page from Supabase.
@@ -36,7 +95,7 @@ export type PublicArticleItem = {
 export async function getAdminArticlesData(): Promise<AdminArticleItem[]> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = (await createClient()) as any;
+    const supabase = createAdminClient() as any;
 
     const { data, error } = await supabase
       .from("blog_posts")
@@ -56,6 +115,8 @@ export async function getAdminArticlesData(): Promise<AdminArticleItem[]> {
       const publishDate = dateSource ? dateSource.split("T")[0] : "Draft";
       const status: "Published" | "Draft" = row.is_published ? "Published" : "Draft";
 
+      const { coverImageUrl, images } = parseImageUrls(row.cover_image_url);
+
       return {
         id: row.id,
         title: row.title || "Untitled Article",
@@ -68,7 +129,8 @@ export async function getAdminArticlesData(): Promise<AdminArticleItem[]> {
         status,
         views: 0,
         isPublished: !!row.is_published,
-        coverImageUrl: row.cover_image_url || undefined,
+        coverImageUrl,
+        images,
       };
     });
   } catch (err) {
@@ -87,6 +149,7 @@ export async function createAdminArticle(input: {
   excerpt?: string;
   status: "Published" | "Draft";
   coverImageUrl?: string;
+  images?: string[];
 }): Promise<{ success: boolean; error?: string }> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -111,13 +174,15 @@ export async function createAdminArticle(input: {
     const isPublished = input.status === "Published";
     const publishedAt = isPublished ? new Date().toISOString() : null;
 
+    const encodedImages = encodeImageUrls(input.images, input.coverImageUrl);
+
     const { error: insertErr } = await supabase.from("blog_posts").insert({
       title,
       slug,
       category,
       content,
       excerpt: input.excerpt || title,
-      cover_image_url: input.coverImageUrl?.trim() || null,
+      cover_image_url: encodedImages || null,
       is_published: isPublished,
       published_at: publishedAt,
     });
@@ -126,6 +191,11 @@ export async function createAdminArticle(input: {
       console.error("Error creating article:", insertErr);
       return { success: false, error: "Failed to create article record." };
     }
+
+    try {
+      revalidatePath("/admin/blog");
+      revalidatePath("/blog");
+    } catch {}
 
     return { success: true };
   } catch (err) {
@@ -146,6 +216,7 @@ export async function updateAdminArticle(
     excerpt?: string;
     status: "Published" | "Draft";
     coverImageUrl?: string;
+    images?: string[];
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -163,6 +234,8 @@ export async function updateAdminArticle(
     const isPublished = input.status === "Published";
     const publishedAt = isPublished ? new Date().toISOString() : null;
 
+    const encodedImages = encodeImageUrls(input.images, input.coverImageUrl);
+
     const { error: updateErr } = await supabase
       .from("blog_posts")
       .update({
@@ -170,7 +243,7 @@ export async function updateAdminArticle(
         category,
         content,
         excerpt: input.excerpt || title,
-        cover_image_url: input.coverImageUrl?.trim() || null,
+        cover_image_url: encodedImages || null,
         is_published: isPublished,
         published_at: publishedAt,
         updated_at: new Date().toISOString(),
@@ -181,6 +254,11 @@ export async function updateAdminArticle(
       console.error("Error updating article:", updateErr);
       return { success: false, error: "Failed to update article." };
     }
+
+    try {
+      revalidatePath("/admin/blog");
+      revalidatePath("/blog");
+    } catch {}
 
     return { success: true };
   } catch (err) {
@@ -205,7 +283,12 @@ function calculateReadTime(content: string): string {
 export async function getPublicBlogPosts(): Promise<PublicArticleItem[]> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = (await createClient()) as any;
+    let supabase: any;
+    try {
+      supabase = (await createClient()) as any;
+    } catch {
+      supabase = createAdminClient() as any;
+    }
 
     const { data, error } = await supabase
       .from("blog_posts")
@@ -223,6 +306,8 @@ export async function getPublicBlogPosts(): Promise<PublicArticleItem[]> {
         ? new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
         : "Recent";
 
+      const { coverImageUrl, images } = parseImageUrls(row.cover_image_url);
+
       return {
         id: row.id,
         title: row.title,
@@ -233,9 +318,8 @@ export async function getPublicBlogPosts(): Promise<PublicArticleItem[]> {
         author: authorName,
         publishDate,
         readTime: calculateReadTime(row.content || ""),
-        coverImageUrl:
-          row.cover_image_url ||
-          "https://images.unsplash.com/photo-1579684385127-1ef15d508118?q=80&w=1200&auto=format&fit=crop",
+        coverImageUrl,
+        images,
       };
     });
   } catch (err) {
@@ -250,7 +334,12 @@ export async function getPublicBlogPosts(): Promise<PublicArticleItem[]> {
 export async function getPublicBlogPostBySlug(slug: string): Promise<PublicArticleItem | null> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = (await createClient()) as any;
+    let supabase: any;
+    try {
+      supabase = (await createClient()) as any;
+    } catch {
+      supabase = createAdminClient() as any;
+    }
 
     const { data, error } = await supabase
       .from("blog_posts")
@@ -268,6 +357,8 @@ export async function getPublicBlogPostBySlug(slug: string): Promise<PublicArtic
       ? new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
       : "Recent";
 
+    const { coverImageUrl, images } = parseImageUrls(data.cover_image_url);
+
     return {
       id: data.id,
       title: data.title,
@@ -278,9 +369,8 @@ export async function getPublicBlogPostBySlug(slug: string): Promise<PublicArtic
       author: authorName,
       publishDate,
       readTime: calculateReadTime(data.content || ""),
-      coverImageUrl:
-        data.cover_image_url ||
-        "https://images.unsplash.com/photo-1579684385127-1ef15d508118?q=80&w=1200&auto=format&fit=crop",
+      coverImageUrl,
+      images,
     };
   } catch (err) {
     console.error("Error fetching public blog post by slug:", err);
