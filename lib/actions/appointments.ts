@@ -81,31 +81,28 @@ export async function getAdminAppointmentsData(): Promise<AdminAppointmentsData>
     todayEnd.setHours(23, 59, 59, 999);
 
     const [
-      todaysAppointmentsRes,
-      completedTodayRes,
-      pendingConfirmationRes,
+      scheduledRes,
+      completedRes,
+      pendingRes,
       upcomingScheduleRes,
     ] = await Promise.all([
-      // 1. Today's appointments count
+      // 1. Scheduled / Active appointments count from DB
       supabase
         .from("appointments")
         .select("*", { count: "exact", head: true })
-        .gte("appointment_date", todayStart.toISOString())
-        .lte("appointment_date", todayEnd.toISOString()),
+        .eq("status", "scheduled"),
 
-      // 2. Completed today count
+      // 2. Completed donations count from DB
       supabase
         .from("appointments")
         .select("*", { count: "exact", head: true })
-        .gte("appointment_date", todayStart.toISOString())
-        .lte("appointment_date", todayEnd.toISOString())
         .eq("status", "completed"),
 
-      // 3. Pending confirmation count (scheduled / pending)
+      // 3. Pending confirmation count from DB
       supabase
         .from("appointments")
         .select("*", { count: "exact", head: true })
-        .or("status.eq.scheduled,status.eq.pending"),
+        .eq("status", "scheduled"),
 
       // 4. Appointment schedule (most recent appointments first)
       supabase
@@ -115,9 +112,9 @@ export async function getAdminAppointmentsData(): Promise<AdminAppointmentsData>
         .limit(100),
     ]);
 
-    const todaysAppointments = todaysAppointmentsRes.count ?? 0;
-    const completedToday = completedTodayRes.count ?? 0;
-    const pendingConfirmation = pendingConfirmationRes.count ?? 0;
+    const todaysAppointments = scheduledRes.count ?? 0;
+    const completedToday = completedRes.count ?? 0;
+    const pendingConfirmation = pendingRes.count ?? 0;
 
     const rows = upcomingScheduleRes.data || [];
     const appointments: AppointmentItem[] = rows.map((row: any) => {
