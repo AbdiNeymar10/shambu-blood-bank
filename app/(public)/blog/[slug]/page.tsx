@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { getPublicBlogPostBySlug } from "@/lib/actions/articles";
+import { ArticleGallery } from "@/components/blog/article-gallery";
 
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -63,15 +64,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         </div>
       </section>
 
-      {/* Featured Image */}
+      {/* Featured Image / Gallery */}
       <div className="container px-4 md:px-6 max-w-5xl mx-auto mb-16">
-        <div className="aspect-video w-full rounded-2xl overflow-hidden shadow-lg bg-muted">
-          <img 
-            src={article.coverImageUrl} 
-            alt={article.title} 
-            className="w-full h-full object-cover"
-          />
-        </div>
+        <ArticleGallery images={article.images} title={article.title} />
       </div>
 
       {/* Article Content */}
