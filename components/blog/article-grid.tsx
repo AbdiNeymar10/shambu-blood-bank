@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, Clock, Loader2, Newspaper } from "lucide-react";
+import { ArrowRight, Clock, Loader2, Newspaper, Image as ImageIcon } from "lucide-react";
 import { getPublicBlogPosts, type PublicArticleItem } from "@/lib/actions/articles";
 
 const CATEGORY_OPTIONS = [
@@ -84,6 +84,12 @@ export function ArticleGrid() {
                   <div className="absolute top-4 left-4 bg-background/90 backdrop-blur-sm px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full text-primary">
                     {article.category}
                   </div>
+                  {article.images && article.images.length > 1 && (
+                    <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-md px-2.5 py-1 text-xs font-bold rounded-full text-white flex items-center gap-1">
+                      <ImageIcon className="w-3.5 h-3.5 text-primary" />
+                      <span>{article.images.length} Photos</span>
+                    </div>
+                  )}
                 </Link>
                 
                 <div className="p-6 flex flex-col flex-grow">
