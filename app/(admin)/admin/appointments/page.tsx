@@ -43,15 +43,19 @@ export default function AdminAppointmentsPage() {
   const [isBookingSubmitting, setIsBookingSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState("");
 
-  const loadData = async () => {
-    setIsLoading(true);
+  const loadData = async (isBackground = false) => {
+    if (!isBackground) setIsLoading(true);
     const result = await getAdminAppointmentsData();
     setData(result);
-    setIsLoading(false);
+    if (!isBackground) setIsLoading(false);
   };
 
   useEffect(() => {
     loadData();
+    const interval = setInterval(() => {
+      loadData(true);
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleOpenBookingModal = async () => {
