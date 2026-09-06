@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import type { BloodGroup } from "@/types/database.types";
+import { parseDateTime } from "@/lib/utils";
 
 export type AppointmentStatus =
   | "scheduled"
@@ -222,11 +223,7 @@ export async function bookAdminAppointment(input: {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = createAdminClient() as any;
 
-    const dateTimeStr = input.time
-      ? `${input.date}T${input.time}:00`
-      : `${input.date}T09:00:00`;
-
-    const apptDateObj = new Date(dateTimeStr);
+    const apptDateObj = parseDateTime(input.date, input.time);
     if (isNaN(apptDateObj.getTime())) {
       return { success: false, error: "Invalid appointment date or time." };
     }
@@ -421,8 +418,7 @@ export async function createAppointment(
 
     if (!profile?.id) return { success: false, error: "Donor profile not found" };
 
-    const dateTimeStr = time ? `${date}T${time}:00` : `${date}T09:00:00`;
-    const apptDateIso = new Date(dateTimeStr).toISOString();
+    const apptDateIso = parseDateTime(date, time).toISOString();
 
     const { error } = await supabase.from("appointments").insert({
       donor_id: profile.id,
@@ -473,8 +469,7 @@ export async function rescheduleAppointment(
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = createAdminClient() as any;
-    const dateTimeStr = newTime ? `${newDate}T${newTime}:00` : `${newDate}T09:00:00`;
-    const apptDateIso = new Date(dateTimeStr).toISOString();
+    const apptDateIso = parseDateTime(newDate, newTime).toISOString();
 
     const { error } = await supabase
       .from("appointments")
