@@ -15,6 +15,7 @@ import {
   BarChart,
   Settings,
   LogOut,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -33,7 +34,13 @@ const sidebarItems = [
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
-export function Sidebar() {
+export function Sidebar({
+  isMobileOpen = false,
+  onCloseMobile,
+}: {
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
+}) {
   const pathname = usePathname();
   const [adminUser, setAdminUser] = useState<{
     fullName: string;
@@ -71,6 +78,13 @@ export function Sidebar() {
     });
   }, []);
 
+  // Close mobile sidebar automatically on path change
+  useEffect(() => {
+    if (onCloseMobile) {
+      onCloseMobile();
+    }
+  }, [pathname]);
+
   const getInitials = (name: string) => {
     const parts = name.trim().split(" ").filter(Boolean);
     if (parts.length >= 2) {
@@ -79,62 +93,114 @@ export function Sidebar() {
     return (name.slice(0, 2) || "AD").toUpperCase();
   };
 
+  const renderNavItems = () => (
+    <nav className="space-y-1.5">
+      {sidebarItems.map((item) => {
+        const isActive =
+          pathname === item.href ||
+          (item.href !== "/admin/dashboard" && pathname?.startsWith(item.href)) ||
+          (item.href === "/admin/dashboard" && (pathname === "/admin" || pathname === "/admin/dashboard"));
+        return (
+          <Link
+            key={item.name}
+            href={item.href}
+            onClick={onCloseMobile}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+              isActive
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+            )}
+          >
+            <item.icon className={cn("w-5 h-5", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
+            {item.name}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+
+  const renderUserProfile = () => (
+    <div className="flex items-center justify-between p-3 bg-secondary rounded-lg group">
+      <div className="flex items-center gap-3 overflow-hidden min-w-0">
+        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
+          {getInitials(adminUser.fullName)}
+        </div>
+        <div className="overflow-hidden min-w-0">
+          <p className="text-sm font-medium truncate">{adminUser.fullName}</p>
+          <p className="text-xs text-muted-foreground truncate">{adminUser.email}</p>
+        </div>
+      </div>
+      <button
+        onClick={() => logout()}
+        className="text-muted-foreground hover:text-destructive transition-colors p-1.5 rounded-md hover:bg-destructive/10 shrink-0 ml-1"
+        title="Sign Out"
+      >
+        <LogOut className="w-4 h-4" />
+      </button>
+    </div>
+  );
+
   return (
-    <aside className="w-64 bg-card border-r border-border h-screen sticky top-0 flex flex-col shadow-sm hidden md:flex">
-      <div className="p-6 border-b border-border flex items-center gap-3">
-        <div className="bg-primary/10 p-2 rounded-lg">
-          <Droplet className="w-6 h-6 text-primary fill-primary" />
+    <>
+      {/* Desktop Sidebar */}
+      <aside className="w-64 bg-card border-r border-border h-screen sticky top-0 flex-col shadow-sm hidden md:flex">
+        <div className="p-6 border-b border-border flex items-center gap-3">
+          <div className="bg-primary/10 p-2 rounded-lg">
+            <Droplet className="w-6 h-6 text-primary fill-primary" />
+          </div>
+          <div>
+            <h2 className="font-bold text-lg leading-tight">Shambu</h2>
+            <p className="text-xs text-muted-foreground font-medium">Admin Portal</p>
+          </div>
         </div>
-        <div>
-          <h2 className="font-bold text-lg leading-tight">Shambu</h2>
-          <p className="text-xs text-muted-foreground font-medium">Admin Portal</p>
+        <div className="flex-1 overflow-y-auto py-6 px-4">
+          {renderNavItems()}
         </div>
-      </div>
-      <div className="flex-1 overflow-y-auto py-6 px-4">
-        <nav className="space-y-1.5">
-          {sidebarItems.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/admin/dashboard" && pathname?.startsWith(item.href)) ||
-              (item.href === "/admin/dashboard" && (pathname === "/admin" || pathname === "/admin/dashboard"));
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                )}
-              >
-                <item.icon className={cn("w-5 h-5", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
-                {item.name}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-      <div className="p-4 border-t border-border">
-        <div className="flex items-center justify-between p-3 bg-secondary rounded-lg group">
-          <div className="flex items-center gap-3 overflow-hidden min-w-0">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
-              {getInitials(adminUser.fullName)}
+        <div className="p-4 border-t border-border">
+          {renderUserProfile()}
+        </div>
+      </aside>
+
+      {/* Mobile Backdrop & Drawer */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs md:hidden animate-in fade-in duration-200"
+          onClick={onCloseMobile}
+        />
+      )}
+
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-72 bg-card border-r border-border flex flex-col shadow-2xl transition-transform duration-300 md:hidden",
+          isMobileOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="p-6 border-b border-border flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-primary/10 p-2 rounded-lg">
+              <Droplet className="w-6 h-6 text-primary fill-primary" />
             </div>
-            <div className="overflow-hidden min-w-0">
-              <p className="text-sm font-medium truncate">{adminUser.fullName}</p>
-              <p className="text-xs text-muted-foreground truncate">{adminUser.email}</p>
+            <div>
+              <h2 className="font-bold text-lg leading-tight">Shambu</h2>
+              <p className="text-xs text-muted-foreground font-medium">Admin Portal</p>
             </div>
           </div>
           <button
-            onClick={() => logout()}
-            className="text-muted-foreground hover:text-destructive transition-colors p-1.5 rounded-md hover:bg-destructive/10 shrink-0 ml-1"
-            title="Sign Out"
+            onClick={onCloseMobile}
+            className="p-2 text-muted-foreground hover:bg-secondary rounded-lg transition-colors"
+            title="Close Menu"
           >
-            <LogOut className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
-      </div>
-    </aside>
+        <div className="flex-1 overflow-y-auto py-6 px-4">
+          {renderNavItems()}
+        </div>
+        <div className="p-4 border-t border-border">
+          {renderUserProfile()}
+        </div>
+      </aside>
+    </>
   );
 }
