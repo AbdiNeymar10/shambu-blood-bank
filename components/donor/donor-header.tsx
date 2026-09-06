@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/shared";
 import { createClient } from "@/lib/supabase/client";
 
-export function DonorHeader() {
+export function DonorHeader({ onOpenMobile }: { onOpenMobile?: () => void }) {
   const [donorName, setDonorName] = useState<string>("Donor");
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export function DonorHeader() {
   return (
     <header className="h-16 border-b border-border bg-card/50 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">
       <div className="flex items-center gap-4 flex-1">
-        <Button variant="ghost" size="icon" className="md:hidden">
+        <Button variant="ghost" size="icon" className="md:hidden" onClick={onOpenMobile} title="Open Menu">
           <Menu className="w-5 h-5" />
         </Button>
         <div className="relative w-full max-w-md hidden sm:block">
