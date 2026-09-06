@@ -10,16 +10,30 @@ import {
   Phone,
   Loader2,
   X,
-  AlertTriangle
+  AlertTriangle,
+  UserCheck,
+  Ban,
+  UserX,
+  Check
 } from "lucide-react";
 import { 
   getAdminAppointmentsData, 
-  processAppointmentCheckIn, 
+  updateAppointmentStatus,
   bookAdminAppointment, 
   getBookingOptions,
-  type AdminAppointmentsData 
+  type AdminAppointmentsData,
+  type AppointmentStatus
 } from "@/lib/actions/appointments";
 import { cn } from "@/lib/utils";
+
+type ConfirmModalState = {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  targetStatus: AppointmentStatus;
+  apptId: string;
+  confirmLabel: string;
+} | null;
 
 export default function AdminAppointmentsPage() {
   const [data, setData] = useState<AdminAppointmentsData>({
@@ -27,7 +41,11 @@ export default function AdminAppointmentsPage() {
     appointments: [],
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [processingCheckInId, setProcessingCheckInId] = useState<string | null>(null);
+  const [processingActionId, setProcessingActionId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // Confirmation Modal State (Complete Donation, Cancel, No Show)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState>(null);
 
   // Booking Modal State
   const [isBookingOpen, setIsBookingOpen] = useState(false);
@@ -58,6 +76,14 @@ export default function AdminAppointmentsPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Auto-dismiss feedback message after 4 seconds
+  useEffect(() => {
+    if (feedback) {
+      const timer = setTimeout(() => setFeedback(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [feedback]);
+
   const handleOpenBookingModal = async () => {
     setIsBookingOpen(true);
     setBookingError("");
@@ -77,12 +103,45 @@ export default function AdminAppointmentsPage() {
     }
   };
 
-  const handleCheckIn = async (id: string) => {
-    setProcessingCheckInId(id);
-    const res = await processAppointmentCheckIn(id);
-    setProcessingCheckInId(null);
+  // Perform Appointment Status Transition
+  const executeStatusUpdate = async (id: string, targetStatus: AppointmentStatus) => {
+    setProcessingActionId(id);
+    setFeedback(null);
+
+    const res = await updateAppointmentStatus(id, targetStatus);
+    setProcessingActionId(null);
+
     if (res.success) {
+      setFeedback({ type: "success", message: res.message || "Appointment status updated successfully." });
       loadData();
+    } else {
+      setFeedback({ type: "error", message: res.error || "Unable to update appointment status. Please try again." });
+    }
+  };
+
+  // Prompt Confirmation for Modal Actions
+  const openConfirmation = (
+    apptId: string,
+    targetStatus: AppointmentStatus,
+    title: string,
+    message: string,
+    confirmLabel: string
+  ) => {
+    setConfirmModal({
+      isOpen: true,
+      apptId,
+      targetStatus,
+      title,
+      message,
+      confirmLabel,
+    });
+  };
+
+  const handleConfirmModalAction = () => {
+    if (confirmModal) {
+      const { apptId, targetStatus } = confirmModal;
+      setConfirmModal(null);
+      executeStatusUpdate(apptId, targetStatus);
     }
   };
 
@@ -101,6 +160,7 @@ export default function AdminAppointmentsPage() {
 
     if (res.success) {
       setIsBookingOpen(false);
+      setFeedback({ type: "success", message: "Appointment booked successfully." });
       loadData();
     } else {
       setBookingError(res.error || "Failed to book appointment.");
@@ -109,6 +169,30 @@ export default function AdminAppointmentsPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Feedback Toast / Alert Banner */}
+      {feedback && (
+        <div
+          className={cn(
+            "p-4 rounded-xl border text-sm font-medium flex items-center justify-between shadow-md animate-in slide-in-from-top duration-300",
+            feedback.type === "success"
+              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+              : "bg-destructive/10 border-destructive/20 text-destructive"
+          )}
+        >
+          <div className="flex items-center gap-2.5">
+            {feedback.type === "success" ? (
+              <CheckCircle2 className="w-5 h-5 shrink-0" />
+            ) : (
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+            )}
+            <span>{feedback.message}</span>
+          </div>
+          <button onClick={() => setFeedback(null)} className="p-1 hover:opacity-70">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -195,58 +279,204 @@ export default function AdminAppointmentsPage() {
                   </td>
                 </tr>
               ) : (
-                data.appointments.map((apt) => (
-                  <tr key={apt.id} className="hover:bg-secondary/20 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-sm text-foreground">{apt.donorName}</div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <Phone className="w-3 h-3" /> {apt.phone}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 font-bold text-primary text-base">
-                      {apt.bloodGroup}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-foreground">
-                      <div>{apt.date}</div>
-                      <div className="text-xs text-muted-foreground">{apt.time}</div>
-                    </td>
-                    <td className="px-6 py-4 text-xs font-medium text-muted-foreground">
-                      <span className="inline-flex items-center gap-1"><Hospital className="w-3.5 h-3.5" /> {apt.center}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={cn(
-                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold",
-                        apt.status === "Confirmed" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" :
-                        apt.status === "Completed" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
-                        apt.status === "Cancelled" ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" :
-                        "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                      )}>
-                        {apt.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      {apt.status === "Completed" ? (
-                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Checked In
+                data.appointments.map((apt) => {
+                  const raw = apt.rawStatus;
+                  return (
+                    <tr key={apt.id} className="hover:bg-secondary/20 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-sm text-foreground">{apt.donorName}</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <Phone className="w-3 h-3" /> {apt.phone}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 font-bold text-primary text-base">
+                        {apt.bloodGroup}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-foreground">
+                        <div>{apt.date}</div>
+                        <div className="text-xs text-muted-foreground">{apt.time}</div>
+                      </td>
+                      <td className="px-6 py-4 text-xs font-medium text-muted-foreground">
+                        <span className="inline-flex items-center gap-1"><Hospital className="w-3.5 h-3.5" /> {apt.center}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={cn(
+                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border",
+                          raw === "confirmed" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" :
+                          raw === "checked_in" ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20" :
+                          raw === "completed" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" :
+                          raw === "cancelled" ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20" :
+                          raw === "no_show" ? "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20" :
+                          "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" // Scheduled
+                        )}>
+                          {apt.status}
                         </span>
-                      ) : (
-                        <button 
-                          onClick={() => handleCheckIn(apt.id)}
-                          disabled={processingCheckInId === apt.id}
-                          className="text-xs font-bold text-primary hover:underline disabled:opacity-50 inline-flex items-center gap-1"
-                        >
-                          {processingCheckInId === apt.id && <Loader2 className="w-3 h-3 animate-spin" />}
-                          Process Check-in
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+
+                          {/* 1. SCHEDULED STATUS ACTIONS */}
+                          {raw === "scheduled" && (
+                            <>
+                              <button
+                                onClick={() => executeStatusUpdate(apt.id, "confirmed")}
+                                disabled={processingActionId === apt.id}
+                                className="px-3 py-1.5 bg-primary text-primary-foreground text-xs font-semibold rounded-lg shadow-xs hover:bg-primary/90 disabled:opacity-50 inline-flex items-center gap-1 transition-all"
+                              >
+                                {processingActionId === apt.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => openConfirmation(
+                                  apt.id,
+                                  "cancelled",
+                                  "Cancel Appointment",
+                                  `Are you sure you want to cancel the appointment for ${apt.donorName}?`,
+                                  "Cancel Appointment"
+                                )}
+                                disabled={processingActionId === apt.id}
+                                className="px-2.5 py-1.5 border border-border text-muted-foreground hover:text-destructive hover:bg-destructive/10 text-xs font-semibold rounded-lg disabled:opacity-50 transition-colors"
+                                title="Cancel Appointment"
+                              >
+                                <Ban className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+
+                          {/* 2. CONFIRMED STATUS ACTIONS */}
+                          {raw === "confirmed" && (
+                            <>
+                              <button
+                                onClick={() => executeStatusUpdate(apt.id, "checked_in")}
+                                disabled={processingActionId === apt.id}
+                                className="px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 text-xs font-semibold rounded-lg shadow-xs disabled:opacity-50 inline-flex items-center gap-1 transition-all"
+                              >
+                                {processingActionId === apt.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
+                                Process Check-in
+                              </button>
+                              <button
+                                onClick={() => openConfirmation(
+                                  apt.id,
+                                  "no_show",
+                                  "Mark as No Show",
+                                  `Are you sure you want to mark ${apt.donorName} as No Show?`,
+                                  "Mark No Show"
+                                )}
+                                disabled={processingActionId === apt.id}
+                                className="px-2.5 py-1.5 border border-border text-muted-foreground hover:text-amber-600 hover:bg-amber-500/10 text-xs font-semibold rounded-lg disabled:opacity-50 transition-colors"
+                                title="Mark No Show"
+                              >
+                                <UserX className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => openConfirmation(
+                                  apt.id,
+                                  "cancelled",
+                                  "Cancel Appointment",
+                                  `Are you sure you want to cancel the appointment for ${apt.donorName}?`,
+                                  "Cancel Appointment"
+                                )}
+                                disabled={processingActionId === apt.id}
+                                className="px-2.5 py-1.5 border border-border text-muted-foreground hover:text-destructive hover:bg-destructive/10 text-xs font-semibold rounded-lg disabled:opacity-50 transition-colors"
+                                title="Cancel Appointment"
+                              >
+                                <Ban className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+
+                          {/* 3. CHECKED IN STATUS ACTIONS */}
+                          {raw === "checked_in" && (
+                            <button
+                              onClick={() => openConfirmation(
+                                apt.id,
+                                "completed",
+                                "Complete Donation",
+                                "Are you sure the blood donation process has been completed?",
+                                "Complete Donation"
+                              )}
+                              disabled={processingActionId === apt.id}
+                              className="px-3 py-1.5 bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-semibold rounded-lg shadow-xs disabled:opacity-50 inline-flex items-center gap-1 transition-all"
+                            >
+                              {processingActionId === apt.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                              Complete Donation
+                            </button>
+                          )}
+
+                          {/* 4. COMPLETED STATUS DISPLAY */}
+                          {raw === "completed" && (
+                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Completed
+                            </span>
+                          )}
+
+                          {/* 5. CANCELLED STATUS DISPLAY */}
+                          {raw === "cancelled" && (
+                            <span className="text-xs font-bold text-rose-600 dark:text-rose-400 inline-flex items-center gap-1">
+                              <Ban className="w-3.5 h-3.5" /> Cancelled
+                            </span>
+                          )}
+
+                          {/* 6. NO SHOW STATUS DISPLAY */}
+                          {raw === "no_show" && (
+                            <span className="text-xs font-bold text-muted-foreground inline-flex items-center gap-1">
+                              <UserX className="w-3.5 h-3.5" /> No Show
+                            </span>
+                          )}
+
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Status Transition Confirmation Modal */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl w-full max-w-md space-y-5 relative">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-lg font-bold text-foreground">{confirmModal.title}</h3>
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="p-1.5 hover:bg-secondary rounded-lg transition-colors text-muted-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {confirmModal.message}
+            </p>
+
+            <div className="pt-3 flex justify-end gap-3 border-t border-border">
+              <button
+                type="button"
+                onClick={() => setConfirmModal(null)}
+                className="px-4 py-2 rounded-xl border border-input text-sm font-semibold hover:bg-secondary transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmModalAction}
+                className={cn(
+                  "px-5 py-2 rounded-xl text-sm font-semibold shadow-md hover:scale-[1.02] active:scale-95 transition-all text-white",
+                  confirmModal.targetStatus === "completed" ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20" :
+                  confirmModal.targetStatus === "cancelled" ? "bg-rose-600 hover:bg-rose-700 shadow-rose-600/20" :
+                  "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20"
+                )}
+              >
+                {confirmModal.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Book Donor Appointment Modal */}
       {isBookingOpen && (
