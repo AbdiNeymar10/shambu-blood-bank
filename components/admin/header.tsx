@@ -2,11 +2,15 @@ import Link from "next/link";
 import { Bell, Search, Menu } from "lucide-react";
 import { ThemeToggle } from "@/components/shared";
 
-export function Header() {
+export function Header({ onOpenMobile }: { onOpenMobile?: () => void }) {
   return (
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 sticky top-0 z-10 shadow-sm">
       <div className="flex items-center gap-4">
-        <button className="md:hidden p-2 text-muted-foreground hover:bg-secondary rounded-lg">
+        <button
+          onClick={onOpenMobile}
+          className="md:hidden p-2 text-muted-foreground hover:bg-secondary rounded-lg transition-colors"
+          title="Open Menu"
+        >
           <Menu className="w-5 h-5" />
         </button>
         <div className="relative hidden sm:block">
