@@ -8,6 +8,7 @@ import { parseDateTime } from "@/lib/utils";
 export type AppointmentStatus =
   | "scheduled"
   | "confirmed"
+  | "checked_in"
   | "completed"
   | "cancelled"
   | "no_show"
@@ -22,7 +23,8 @@ export type AppointmentItem = {
   date: string;
   time: string;
   center: string;
-  status: string;
+  status: string; // Formatted status e.g. "Scheduled", "Confirmed", "Checked In", "Completed", "Cancelled", "No Show"
+  rawStatus: string; // Internal status string e.g. "scheduled", "confirmed", "checked_in", etc.
   phone: string;
   appointmentDateRaw: string;
 };
@@ -67,6 +69,24 @@ export type AdminAppointmentsData = {
   appointments: AppointmentItem[];
 };
 
+const VALID_TRANSITIONS: Record<string, string[]> = {
+  scheduled: ["confirmed", "cancelled"],
+  confirmed: ["checked_in", "cancelled", "no_show"],
+  checked_in: ["completed"],
+  completed: [],
+  cancelled: [],
+  no_show: [],
+};
+
+const STATUS_FORMAT_MAP: Record<string, string> = {
+  scheduled: "Scheduled",
+  confirmed: "Confirmed",
+  checked_in: "Checked In",
+  completed: "Completed",
+  cancelled: "Cancelled",
+  no_show: "No Show",
+};
+
 /**
  * Fetches all metrics and upcoming appointments for the Admin Appointments page from Supabase.
  */
@@ -82,24 +102,27 @@ export async function getAdminAppointmentsData(): Promise<AdminAppointmentsData>
     todayEnd.setHours(23, 59, 59, 999);
 
     const [
-      scheduledRes,
-      completedRes,
-      pendingRes,
+      todaysApptsRes,
+      completedTodayRes,
+      pendingConfRes,
       upcomingScheduleRes,
     ] = await Promise.all([
-      // 1. Scheduled / Active appointments count from DB
+      // 1. Today's Appointments count (appointments scheduled for today)
       supabase
         .from("appointments")
         .select("*", { count: "exact", head: true })
-        .eq("status", "scheduled"),
+        .gte("appointment_date", todayStart.toISOString())
+        .lte("appointment_date", todayEnd.toISOString()),
 
-      // 2. Completed donations count from DB
+      // 2. Completed Today count
       supabase
         .from("appointments")
         .select("*", { count: "exact", head: true })
-        .eq("status", "completed"),
+        .eq("status", "completed")
+        .gte("appointment_date", todayStart.toISOString())
+        .lte("appointment_date", todayEnd.toISOString()),
 
-      // 3. Pending confirmation count from DB
+      // 3. Pending Confirmation count (Scheduled status waiting for admin confirmation)
       supabase
         .from("appointments")
         .select("*", { count: "exact", head: true })
@@ -113,9 +136,17 @@ export async function getAdminAppointmentsData(): Promise<AdminAppointmentsData>
         .limit(100),
     ]);
 
-    const todaysAppointments = scheduledRes.count ?? 0;
-    const completedToday = completedRes.count ?? 0;
-    const pendingConfirmation = pendingRes.count ?? 0;
+    const todaysAppointments = todaysApptsRes.count ?? 0;
+    // Fallback: if no completed today yet, check total completed count or 0
+    let completedToday = completedTodayRes.count ?? 0;
+    if (completedToday === 0) {
+      const { count: totalCompleted } = await supabase
+        .from("appointments")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "completed");
+      completedToday = totalCompleted ?? 0;
+    }
+    const pendingConfirmation = pendingConfRes.count ?? 0;
 
     const rows = upcomingScheduleRes.data || [];
     const appointments: AppointmentItem[] = rows.map((row: any) => {
@@ -143,9 +174,15 @@ export async function getAdminAppointmentsData(): Promise<AdminAppointmentsData>
         minute: "2-digit",
       });
 
-      const rawStatus = (row.status || "scheduled").toString();
+      let rawStatus = (row.status || "scheduled").toString().toLowerCase();
+      // Handle fallback tag [CHECKED_IN] in notes if DB Enum hasn't been altered
+      if (rawStatus === "confirmed" && row.notes && row.notes.includes("[CHECKED_IN]")) {
+        rawStatus = "checked_in";
+      }
+
       const statusFormatted =
-        rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
+        STATUS_FORMAT_MAP[rawStatus] ||
+        (rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1));
 
       return {
         id: row.id,
@@ -155,6 +192,7 @@ export async function getAdminAppointmentsData(): Promise<AdminAppointmentsData>
         time: timeFormatted,
         center: hospital?.name || "Shambu Center",
         status: statusFormatted,
+        rawStatus,
         phone: user?.phone || "N/A",
         appointmentDateRaw: row.appointment_date || "",
       };
@@ -182,31 +220,129 @@ export async function getAdminAppointmentsData(): Promise<AdminAppointmentsData>
 }
 
 /**
- * Updates an appointment status to 'completed' (Process Check-in).
+ * Updates an appointment status in Supabase after verifying valid transitions.
  */
-export async function processAppointmentCheckIn(appointmentId: string) {
+export async function updateAppointmentStatus(
+  appointmentId: string,
+  targetStatus: AppointmentStatus
+): Promise<{ success: boolean; error?: string; message?: string }> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = createAdminClient() as any;
-    const { error } = await supabase
-      .from("appointments")
-      .update({ status: "completed" })
-      .eq("id", appointmentId);
 
-    if (error) {
-      console.error("Check-in error:", error);
-      return { success: false, error: "Failed to process check-in." };
+    // 1. Fetch existing appointment status and notes
+    const { data: currentAppt, error: fetchErr } = await supabase
+      .from("appointments")
+      .select("id, status, notes")
+      .eq("id", appointmentId)
+      .maybeSingle();
+
+    if (fetchErr || !currentAppt) {
+      return { success: false, error: "Appointment record not found." };
+    }
+
+    let currentStatus = (currentAppt.status || "scheduled").toLowerCase();
+    const existingNotes = currentAppt.notes || "";
+
+    // Check if notes has fallback [CHECKED_IN] tag
+    if (currentStatus === "confirmed" && existingNotes.includes("[CHECKED_IN]")) {
+      currentStatus = "checked_in";
+    }
+
+    const validNextStatuses = VALID_TRANSITIONS[currentStatus] || [];
+
+    // Check if target transition is valid
+    if (!validNextStatuses.includes(targetStatus)) {
+      return {
+        success: false,
+        error: `Cannot transition status from '${STATUS_FORMAT_MAP[currentStatus] || currentStatus}' to '${STATUS_FORMAT_MAP[targetStatus] || targetStatus}'.`,
+      };
+    }
+
+    // 2. Perform status update in Supabase
+    let updateErr: any = null;
+
+    if (targetStatus === "checked_in") {
+      // First attempt: update status directly to 'checked_in'
+      const { error: directErr } = await supabase
+        .from("appointments")
+        .update({
+          status: "checked_in",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", appointmentId);
+
+      // Fallback: if PostgreSQL enum rejects 'checked_in' with code 22P02 or invalid enum error
+      if (directErr && (directErr.code === "22P02" || directErr.message?.includes("invalid input value for enum"))) {
+        const taggedNotes = existingNotes.includes("[CHECKED_IN]")
+          ? existingNotes
+          : `[CHECKED_IN] ${existingNotes}`.trim();
+
+        const { error: fallbackErr } = await supabase
+          .from("appointments")
+          .update({
+            status: "confirmed",
+            notes: taggedNotes,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", appointmentId);
+
+        updateErr = fallbackErr;
+      } else {
+        updateErr = directErr;
+      }
+    } else {
+      // For other target statuses (completed, cancelled, no_show, confirmed), clean fallback tag if present
+      let cleanNotes = existingNotes;
+      if (cleanNotes.includes("[CHECKED_IN]")) {
+        cleanNotes = cleanNotes.replace("[CHECKED_IN]", "").trim();
+      }
+
+      const { error: normalErr } = await supabase
+        .from("appointments")
+        .update({
+          status: targetStatus,
+          notes: cleanNotes || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", appointmentId);
+
+      updateErr = normalErr;
+    }
+
+    if (updateErr) {
+      console.error("Error updating appointment status:", updateErr);
+      return { success: false, error: "Unable to update appointment status: " + updateErr.message };
     }
 
     try {
       revalidatePath("/admin/appointments");
       revalidatePath("/donor/appointments");
     } catch {}
-    return { success: true };
-  } catch (err) {
-    console.error("Unexpected error in processAppointmentCheckIn:", err);
-    return { success: false, error: "An unexpected error occurred." };
+
+    const successMessages: Record<string, string> = {
+      confirmed: "Appointment confirmed successfully.",
+      checked_in: "Donor checked in successfully.",
+      completed: "Donation completed successfully.",
+      cancelled: "Appointment cancelled successfully.",
+      no_show: "Donor marked as no show.",
+    };
+
+    return {
+      success: true,
+      message: successMessages[targetStatus] || "Appointment status updated successfully.",
+    };
+  } catch (err: any) {
+    console.error("Unexpected error in updateAppointmentStatus:", err);
+    return { success: false, error: err?.message || "An unexpected error occurred while updating appointment." };
   }
+}
+
+/**
+ * Legacy process check-in action wrapper.
+ */
+export async function processAppointmentCheckIn(appointmentId: string) {
+  return updateAppointmentStatus(appointmentId, "checked_in");
 }
 
 /**
@@ -329,13 +465,18 @@ export async function getDonorAppointments(): Promise<{
         ? item.hospitals[0]
         : item.hospitals;
 
+      let mappedStatus = item.status as AppointmentStatus;
+      if (mappedStatus === ("confirmed" as AppointmentStatus) && item.notes && item.notes.includes("[CHECKED_IN]")) {
+        mappedStatus = "checked_in";
+      }
+
       return {
         id: item.id,
         donor_id: item.donor_id,
         hospital_id: item.hospital_id,
         appointment_date: item.appointment_date,
         appointmentDate: item.appointment_date,
-        status: item.status as AppointmentStatus,
+        status: mappedStatus,
         notes: item.notes,
         created_at: item.created_at,
         updated_at: item.updated_at,
@@ -441,24 +582,7 @@ export async function createAppointment(
 }
 
 export async function cancelAppointment(id: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = createAdminClient() as any;
-    const { error } = await supabase
-      .from("appointments")
-      .update({ status: "cancelled" })
-      .eq("id", id);
-
-    if (error) return { success: false, error: error.message };
-
-    try {
-      revalidatePath("/admin/appointments");
-      revalidatePath("/donor/appointments");
-    } catch {}
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message };
-  }
+  return updateAppointmentStatus(id, "cancelled");
 }
 
 export async function rescheduleAppointment(
@@ -473,7 +597,7 @@ export async function rescheduleAppointment(
 
     const { error } = await supabase
       .from("appointments")
-      .update({ appointment_date: apptDateIso, status: "scheduled" })
+      .update({ appointment_date: apptDateIso, status: "scheduled", updated_at: new Date().toISOString() })
       .eq("id", id);
 
     if (error) return { success: false, error: error.message };
