@@ -198,20 +198,32 @@ export default function DonorAppointmentsPage() {
       case "approved":
         return (
           <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold border-none">
-            <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approved
+            <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Confirmed
+          </Badge>
+        );
+      case "checked_in":
+        return (
+          <Badge className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold border-none">
+            <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Checked In
           </Badge>
         );
       case "scheduled":
       case "pending":
         return (
           <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold border-none">
-            <Clock className="w-3.5 h-3.5 mr-1" /> Pending
+            <Clock className="w-3.5 h-3.5 mr-1" /> Scheduled
           </Badge>
         );
       case "completed":
         return (
           <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-none font-bold">
             <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Completed
+          </Badge>
+        );
+      case "no_show":
+        return (
+          <Badge className="bg-slate-500/10 text-slate-600 dark:text-slate-400 border-none font-bold">
+            <XCircle className="w-3.5 h-3.5 mr-1" /> No Show
           </Badge>
         );
       case "cancelled":
