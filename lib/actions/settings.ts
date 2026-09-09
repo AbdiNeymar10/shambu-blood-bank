@@ -151,9 +151,9 @@ const SINGLETON_SETTINGS_ID = "00000000-0000-0000-0000-000000000001";
 
 const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   bloodBankName: "Shambu Blood Bank",
-  emergencyHotline: "+251 57 665 0123",
-  primaryContactEmail: "support@shambu-bloodbank.org",
-  locationAddress: "Shambu Town, Horo Guduru Wollega, Oromia, Ethiopia",
+  emergencyHotline: "+251944000874",
+  primaryContactEmail: "shambubb2017@gmail.com",
+  locationAddress: "Shambu, Oromia, Ethiopia ",
   smsProvider: "Ethio Telecom Bulk SMS API",
   senderId: "SHAMBU-BLOOD",
 };
