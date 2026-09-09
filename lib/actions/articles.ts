@@ -377,3 +377,51 @@ export async function getPublicBlogPostBySlug(slug: string): Promise<PublicArtic
     return null;
   }
 }
+
+/**
+ * Uploads an image file to Supabase Storage ('blog_images' bucket).
+ * If storage upload fails, returns success: false with error message.
+ */
+export async function uploadArticleImage(formData: FormData): Promise<{ success: boolean; url?: string; error?: string }> {
+  try {
+    const file = formData.get("file") as File;
+    if (!file) {
+      return { success: false, error: "No file selected." };
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = createAdminClient() as any;
+
+    const fileExt = file.name.split(".").pop() || "jpg";
+    const fileName = `blog_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+    const filePath = `articles/${fileName}`;
+
+    const buffer = await file.arrayBuffer();
+
+    const { data: uploadData, error: uploadErr } = await supabase.storage
+      .from("blog_images")
+      .upload(filePath, buffer, {
+        contentType: file.type || "image/jpeg",
+        upsert: true,
+      });
+
+    if (uploadErr) {
+      console.warn("Supabase storage upload info:", uploadErr.message);
+      return { success: false, error: uploadErr.message };
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from("blog_images")
+      .getPublicUrl(filePath);
+
+    if (publicUrlData?.publicUrl) {
+      return { success: true, url: publicUrlData.publicUrl };
+    }
+
+    return { success: false, error: "Failed to get public URL." };
+  } catch (err: any) {
+    console.error("Error uploading article image:", err);
+    return { success: false, error: err?.message || "Failed to upload image file." };
+  }
+}
+
