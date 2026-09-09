@@ -9,9 +9,9 @@ import type { PublicSystemSettings } from "@/lib/actions/settings";
 export function ContactInfo() {
   const [info, setInfo] = useState<PublicSystemSettings>({
     bloodBankName: "Shambu Blood Bank",
-    emergencyHotline: "+251 57 665 0123",
-    primaryContactEmail: "abitolesa23@gmail.com",
-    locationAddress: "Shambu Town, Horo Guduru Wollega, Oromia, Ethiopia",
+    emergencyHotline: "+251944000874",
+    primaryContactEmail: "shambubb2017@gmail.com",
+    locationAddress: "Shambu, Oromia, Ethiopia",
   });
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export function ContactInfo() {
             <p className="text-muted-foreground mb-1">
               General Inquiries: <a href={`tel:${info.emergencyHotline}`} className="text-foreground hover:text-primary transition-colors">{info.emergencyHotline}</a>
             </p>
-            <p className="text-destructive font-semibold">Emergency Hotline: {info.emergencyHotline}</p>
+            {/* <p className="text-destructive font-semibold">Emergency Hotline: {info.emergencyHotline}</p> */}
           </div>
         </motion.div>
 
