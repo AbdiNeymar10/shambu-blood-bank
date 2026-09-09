@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Newspaper, 
   Plus, 
@@ -14,12 +14,17 @@ import {
   X,
   AlertTriangle,
   Image as ImageIcon,
-  Link as LinkIcon
+  Link as LinkIcon,
+  UploadCloud,
+  Upload,
+  Star,
+  Trash2
 } from "lucide-react";
 import { 
   getAdminArticlesData, 
   createAdminArticle, 
   updateAdminArticle,
+  uploadArticleImage,
   type AdminArticleItem 
 } from "@/lib/actions/articles";
 import { cn } from "@/lib/utils";
@@ -38,9 +43,59 @@ const PRESET_IMAGES = [
   { label: "Community Outreach", url: "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&q=80&w=600" },
 ];
 
+/**
+ * Resizes and compresses image files on the client before converting to Base64 data URL fallback.
+ */
+function compressImageFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+        const maxDimension = 1200;
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", 0.85));
+        } else {
+          resolve(e.target?.result as string);
+        }
+      };
+      img.onerror = () => resolve(e.target?.result as string);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function AdminBlogPage() {
   const [articles, setArticles] = useState<AdminArticleItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // File Inputs Refs
+  const createFileInputRef = useRef<HTMLInputElement | null>(null);
+  const editFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Image Uploading & Drag State
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Create Article Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -132,6 +187,26 @@ export default function AdminBlogPage() {
     }
   };
 
+  const handleSetCoverImage = (isEdit: boolean, index: number) => {
+    if (isEdit) {
+      setEditForm((prev) => {
+        if (index <= 0 || index >= prev.images.length) return prev;
+        const next = [...prev.images];
+        const selected = next.splice(index, 1)[0];
+        next.unshift(selected);
+        return { ...prev, images: next, coverImageUrl: selected };
+      });
+    } else {
+      setCreateForm((prev) => {
+        if (index <= 0 || index >= prev.images.length) return prev;
+        const next = [...prev.images];
+        const selected = next.splice(index, 1)[0];
+        next.unshift(selected);
+        return { ...prev, images: next, coverImageUrl: selected };
+      });
+    }
+  };
+
   const handleImageChange = (isEdit: boolean, index: number, value: string) => {
     if (isEdit) {
       setEditForm((prev) => {
@@ -146,6 +221,71 @@ export default function AdminBlogPage() {
         return { ...prev, images: next, coverImageUrl: next[0] || value };
       });
     }
+  };
+
+  // Handles uploading files chosen from File Explorer / Gallery
+  const handleFileSelected = async (files: FileList | File[] | null, isEdit: boolean) => {
+    if (!files || files.length === 0) return;
+    setIsUploadingImage(true);
+
+    const newUrls: string[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!file.type.startsWith("image/")) continue;
+
+      let uploadedUrl = "";
+      // 1. Try Supabase Storage upload
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await uploadArticleImage(formData);
+        if (res.success && res.url) {
+          uploadedUrl = res.url;
+        }
+      } catch (err) {
+        console.warn("Storage upload failed, falling back to base64", err);
+      }
+
+      // 2. Fallback to compressed Base64 data URL
+      if (!uploadedUrl) {
+        try {
+          uploadedUrl = await compressImageFile(file);
+        } catch (e) {
+          console.error("Failed to compress image file", e);
+        }
+      }
+
+      if (uploadedUrl) {
+        newUrls.push(uploadedUrl);
+      }
+    }
+
+    if (newUrls.length > 0) {
+      if (isEdit) {
+        setEditForm((prev) => {
+          const cleaned = prev.images.filter((img) => img.trim().length > 0);
+          const combined = [...cleaned, ...newUrls];
+          return {
+            ...prev,
+            images: combined,
+            coverImageUrl: prev.coverImageUrl || combined[0],
+          };
+        });
+      } else {
+        setCreateForm((prev) => {
+          const cleaned = prev.images.filter((img) => img.trim().length > 0);
+          const combined = [...cleaned, ...newUrls];
+          return {
+            ...prev,
+            images: combined,
+            coverImageUrl: prev.coverImageUrl || combined[0],
+          };
+        });
+      }
+    }
+
+    setIsUploadingImage(false);
   };
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
@@ -233,6 +373,167 @@ export default function AdminBlogPage() {
     } else {
       setEditError(res.error || "Failed to update article.");
     }
+  };
+
+  /**
+   * Renders the complete Image Picker & Gallery Management component for Modals
+   */
+  const renderImagePickerSection = (isEdit: boolean) => {
+    const imagesList = isEdit ? editForm.images : createForm.images;
+    const fileInputRef = isEdit ? editFileInputRef : createFileInputRef;
+
+    return (
+      <div className="space-y-4 p-4 bg-secondary/30 rounded-2xl border border-border">
+        {/* Hidden File Input */}
+        <input 
+          type="file"
+          ref={fileInputRef}
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            handleFileSelected(e.target.files, isEdit);
+            e.target.value = "";
+          }}
+        />
+
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <label className="text-sm font-bold text-foreground flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-primary" /> Article Pictures & Gallery ({imagesList.length})
+            </label>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Add multiple photos from your device gallery or computer. The 1st photo is used as the cover.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={isUploadingImage}
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-xl shadow-md hover:bg-primary/90 transition-all shrink-0 active:scale-95 disabled:opacity-50"
+            >
+              {isUploadingImage ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+              Upload from File / Gallery
+            </button>
+            <button
+              type="button"
+              onClick={() => handleAddImage(isEdit, "")}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-secondary text-foreground hover:bg-secondary/80 text-xs font-semibold rounded-xl border border-border transition-colors shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" /> URL
+            </button>
+          </div>
+        </div>
+
+        {/* Drag & Drop Upload Zone */}
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            if (e.dataTransfer.files) {
+              handleFileSelected(e.dataTransfer.files, isEdit);
+            }
+          }}
+          onClick={() => fileInputRef.current?.click()}
+          className={cn(
+            "border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1.5",
+            isDragging
+              ? "border-primary bg-primary/10 scale-[1.01]"
+              : "border-border/80 hover:border-primary/50 bg-background/50"
+          )}
+        >
+          <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+            {isUploadingImage ? <Loader2 className="w-5 h-5 animate-spin" /> : <UploadCloud className="w-5 h-5" />}
+          </div>
+          <div>
+            <span className="text-xs font-bold text-foreground">Choose image files from your computer or gallery</span>
+            <span className="text-[11px] text-muted-foreground block">Select JPG, PNG, WebP photos or drag & drop files here</span>
+          </div>
+        </div>
+
+        {/* Image List / Cards */}
+        {imagesList.length > 0 && (
+          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+            {imagesList.map((imgUrl, idx) => (
+              <div key={idx} className="flex items-center gap-2 p-2 rounded-xl bg-background border border-border shadow-sm">
+                <div className="w-12 h-12 rounded-lg border border-border overflow-hidden bg-secondary shrink-0 flex items-center justify-center relative group">
+                  {imgUrl ? (
+                    <img src={imgUrl} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                  ) : (
+                    <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                  )}
+                  {idx === 0 && (
+                    <span className="absolute bottom-0 inset-x-0 bg-primary text-[7px] font-extrabold text-primary-foreground text-center py-0.5 uppercase tracking-wider">
+                      Cover
+                    </span>
+                  )}
+                </div>
+                <div className="relative flex-1 min-w-0">
+                  <LinkIcon className="w-3 h-3 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={imgUrl}
+                    onChange={(e) => handleImageChange(isEdit, idx, e.target.value)}
+                    placeholder={idx === 0 ? "Main Cover Photo..." : `Gallery Photo #${idx + 1}...`}
+                    className="w-full h-9 pl-8 pr-2 rounded-lg border border-input bg-background text-xs outline-none focus:ring-1 focus:ring-primary truncate"
+                  />
+                </div>
+                
+                {/* Actions */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {idx > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleSetCoverImage(isEdit, idx)}
+                      className="px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 rounded-md transition-colors flex items-center gap-1"
+                      title="Make this photo the main cover"
+                    >
+                      <Star className="w-3 h-3" /> Make Cover
+                    </button>
+                  )}
+                  {imagesList.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(isEdit, idx)}
+                      className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                      title="Remove Picture"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Preset Gallery Choices */}
+        <div className="pt-2 border-t border-border/60">
+          <span className="text-[11px] font-semibold text-muted-foreground block mb-1.5">Quick Stock Photos:</span>
+          <div className="grid grid-cols-4 gap-2">
+            {PRESET_IMAGES.map((preset, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleAddImage(isEdit, preset.url)}
+                className="relative rounded-lg overflow-hidden border border-border h-11 hover:border-primary transition-all group"
+              >
+                <img src={preset.url} alt={preset.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                <span className="absolute inset-0 bg-black/50 text-[9px] font-bold text-white flex items-center justify-center p-1 text-center line-clamp-2">
+                  + {preset.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -390,86 +691,8 @@ export default function AdminBlogPage() {
                 />
               </div>
 
-              {/* Multiple Pictures Section */}
-              <div className="space-y-3 p-4 bg-secondary/30 rounded-2xl border border-border">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="text-sm font-bold text-foreground flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4 text-primary" /> Article Pictures & Gallery ({createForm.images.length})
-                    </label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Add multiple pictures for your article. Image #1 serves as the main cover photo.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleAddImage(false, "")}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-lg hover:bg-primary/20 transition-colors shrink-0"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add Picture
-                  </button>
-                </div>
-
-                {/* Picture List Inputs */}
-                <div className="space-y-2">
-                  {createForm.images.map((imgUrl, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <div className="w-10 h-10 rounded-lg border border-border overflow-hidden bg-background shrink-0 flex items-center justify-center relative">
-                        {imgUrl ? (
-                          <img src={imgUrl} alt={`Picture ${idx + 1}`} className="w-full h-full object-cover" />
-                        ) : (
-                          <ImageIcon className="w-4 h-4 text-muted-foreground" />
-                        )}
-                        {idx === 0 && (
-                          <span className="absolute bottom-0 inset-x-0 bg-primary text-[7px] font-bold text-primary-foreground text-center py-0.2 uppercase">
-                            Cover
-                          </span>
-                        )}
-                      </div>
-                      <div className="relative flex-1">
-                        <LinkIcon className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                        <input
-                          type="url"
-                          value={imgUrl}
-                          onChange={(e) => handleImageChange(false, idx, e.target.value)}
-                          placeholder={idx === 0 ? "Main Cover Picture URL..." : `Gallery Picture #${idx + 1} URL...`}
-                          className="w-full h-10 pl-9 pr-3 rounded-xl border border-input bg-background text-xs outline-none focus:ring-2 focus:ring-primary"
-                        />
-                      </div>
-                      {createForm.images.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveImage(false, idx)}
-                          className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors shrink-0"
-                          title="Remove Picture"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Preset Choices */}
-                <div className="pt-2 border-t border-border/60">
-                  <span className="text-[11px] font-semibold text-muted-foreground block mb-1.5">Click preset to add to article pictures:</span>
-                  <div className="grid grid-cols-4 gap-2">
-                    {PRESET_IMAGES.map((preset, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleAddImage(false, preset.url)}
-                        className="relative rounded-lg overflow-hidden border border-border h-11 hover:border-primary transition-all group"
-                      >
-                        <img src={preset.url} alt={preset.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                        <span className="absolute inset-0 bg-black/50 text-[9px] font-bold text-white flex items-center justify-center p-1 text-center line-clamp-2">
-                          + {preset.label}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              {/* Multiple Pictures & Gallery Section */}
+              {renderImagePickerSection(false)}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -573,86 +796,8 @@ export default function AdminBlogPage() {
                 />
               </div>
 
-              {/* Multiple Pictures Section */}
-              <div className="space-y-3 p-4 bg-secondary/30 rounded-2xl border border-border">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="text-sm font-bold text-foreground flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4 text-primary" /> Article Pictures & Gallery ({editForm.images.length})
-                    </label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Add multiple pictures for your article. Image #1 serves as the main cover photo.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleAddImage(true, "")}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-lg hover:bg-primary/20 transition-colors shrink-0"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add Picture
-                  </button>
-                </div>
-
-                {/* Picture List Inputs */}
-                <div className="space-y-2">
-                  {editForm.images.map((imgUrl, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <div className="w-10 h-10 rounded-lg border border-border overflow-hidden bg-background shrink-0 flex items-center justify-center relative">
-                        {imgUrl ? (
-                          <img src={imgUrl} alt={`Picture ${idx + 1}`} className="w-full h-full object-cover" />
-                        ) : (
-                          <ImageIcon className="w-4 h-4 text-muted-foreground" />
-                        )}
-                        {idx === 0 && (
-                          <span className="absolute bottom-0 inset-x-0 bg-primary text-[7px] font-bold text-primary-foreground text-center py-0.2 uppercase">
-                            Cover
-                          </span>
-                        )}
-                      </div>
-                      <div className="relative flex-1">
-                        <LinkIcon className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                        <input
-                          type="url"
-                          value={imgUrl}
-                          onChange={(e) => handleImageChange(true, idx, e.target.value)}
-                          placeholder={idx === 0 ? "Main Cover Picture URL..." : `Gallery Picture #${idx + 1} URL...`}
-                          className="w-full h-10 pl-9 pr-3 rounded-xl border border-input bg-background text-xs outline-none focus:ring-2 focus:ring-primary"
-                        />
-                      </div>
-                      {editForm.images.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveImage(true, idx)}
-                          className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors shrink-0"
-                          title="Remove Picture"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Preset Choices */}
-                <div className="pt-2 border-t border-border/60">
-                  <span className="text-[11px] font-semibold text-muted-foreground block mb-1.5">Click preset to add to article pictures:</span>
-                  <div className="grid grid-cols-4 gap-2">
-                    {PRESET_IMAGES.map((preset, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleAddImage(true, preset.url)}
-                        className="relative rounded-lg overflow-hidden border border-border h-11 hover:border-primary transition-all group"
-                      >
-                        <img src={preset.url} alt={preset.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                        <span className="absolute inset-0 bg-black/50 text-[9px] font-bold text-white flex items-center justify-center p-1 text-center line-clamp-2">
-                          + {preset.label}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              {/* Multiple Pictures & Gallery Section */}
+              {renderImagePickerSection(true)}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
