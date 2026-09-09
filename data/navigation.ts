@@ -53,9 +53,9 @@ export const SOCIAL_LINKS: readonly SocialLink[] = [
 ] as const;
 
 export const CONTACT_INFO = {
-  email: "support@shambubloodbank.org",
-  phone: "+91 98765 43210",
-  emergency: "+91 90000 00000",
-  address: "Shambu Blood Bank, City Center, India",
+  email: "shambubb2017@gmail.com",
+  phone: "+251944000874",
+  emergency: "+251944000874",
+  address: "Shambu, Oromia, Ethiopia",
   officeHours: "Mon - Sat, 8:00 AM - 8:00 PM",
 } as const;
