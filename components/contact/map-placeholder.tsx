@@ -44,7 +44,7 @@ export function MapPlaceholder() {
                 </div>
                 <div>
                   <h4 className="font-bold text-sm text-foreground">Shambu Headquarters</h4>
-                  <p className="text-xs text-muted-foreground">Horo Guduru Wollega Zone, Oromia Region, Ethiopia</p>
+                  <p className="text-xs text-muted-foreground">Shambu, Oromia, Ethiopia</p>
                 </div>
               </div>
             </div>
@@ -56,21 +56,21 @@ export function MapPlaceholder() {
               <h3 className="font-bold text-base md:text-lg text-foreground">Visit Our Center</h3>
               <p className="text-sm text-muted-foreground flex items-center gap-1.5 font-medium">
                 <MapPin className="w-4 h-4 text-primary shrink-0" />
-                Shambu Town, Horo Guduru Wollega, Oromia, Ethiopia
+                Shambu, Oromia, Ethiopia
               </p>
               <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground pt-0.5">
                 <span className="flex items-center gap-1.5 font-medium">
                   <Clock className="w-3.5 h-3.5 text-primary" /> Mon–Sat: 8:00 AM – 6:00 PM
                 </span>
                 <span className="flex items-center gap-1.5 font-medium">
-                  <Phone className="w-3.5 h-3.5 text-primary" /> +251 57 665 0123
+                  <Phone className="w-3.5 h-3.5 text-primary" /> +251944000874
                 </span>
               </div>
             </div>
             <Button variant="default" className="rounded-xl shrink-0 gap-2 text-sm font-bold shadow-md hover:scale-105 active:scale-95 transition-all" asChild>
-              <a 
-                href="https://www.google.com/maps/search/?api=1&query=Shambu+Blood+Bank+Horo+Guduru+Wollega+Ethiopia" 
-                target="_blank" 
+              <a
+                href="https://www.google.com/maps/search/?api=1&query=Shambu+Blood+Bank+Horo+Guduru+Wollega+Ethiopia"
+                target="_blank"
                 rel="noreferrer"
               >
                 <Navigation className="w-4 h-4" />
