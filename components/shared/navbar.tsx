@@ -119,7 +119,7 @@ export function Navbar({
                 <Link href="/login">Sign In</Link>
               </SecondaryButton>
               <PrimaryButton asChild size="sm">
-                <Link href="/register">Become a Donor</Link>
+                <Link href="/donate">Become a Donor</Link>
               </PrimaryButton>
             </>
           )}
@@ -180,7 +180,7 @@ export function Navbar({
                       <Link href="/login">Sign In</Link>
                     </SecondaryButton>
                     <PrimaryButton asChild>
-                      <Link href="/register">Become a Donor</Link>
+                      <Link href="/donate">Become a Donor</Link>
                     </PrimaryButton>
                   </>
                 )}
