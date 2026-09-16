@@ -4,29 +4,24 @@ import { motion } from "framer-motion";
 
 const timelineEvents = [
   {
-    year: "2008",
-    title: "Foundation Established",
-    description: "Started with a single collection center and a passionate team of 5 volunteers.",
+    year: "June 28, 2017 E.C.",
+    title: "Official Establishment",
+    description: "Established by the Oromia Health Bureau to meet expanding healthcare demand and ensure safe blood products for all.",
   },
   {
-    year: "2012",
-    title: "Regional Expansion",
-    description: "Opened 3 new centers across the state, increasing daily collection capacity by 300%.",
+    year: "Phase I",
+    title: "Testing & Processing Facility",
+    description: "Equipped state-of-the-art laboratory testing systems to guarantee high standards of safe red blood cells and tissue services.",
   },
   {
-    year: "2015",
-    title: "Advanced Tech Adoption",
-    description: "Implemented state-of-the-art NAT testing to ensure the highest safety standards for all blood products.",
+    year: "Phase II",
+    title: "Voluntary Donor Network",
+    description: "Mobilized community outreach programs encouraging regular voluntary blood donations every three months.",
   },
   {
-    year: "2019",
-    title: "Mobile App Launch",
-    description: "Introduced our donor mobile application, making it easier to schedule appointments and track donations.",
-  },
-  {
-    year: "2023",
-    title: "National Recognition",
-    description: "Awarded the National Healthcare Excellence Award for our critical response during emergencies.",
+    year: "Present",
+    title: "Expanding Center of Excellence",
+    description: "Striving towards becoming a regional and national Center of Excellence for blood and tissue services in Ethiopia.",
   },
 ];
 
@@ -37,7 +32,7 @@ export function ImpactTimeline() {
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">Our Journey</h2>
           <p className="text-muted-foreground text-lg">
-            A timeline of our growth, milestones, and the impact we've made together over the years.
+            Milestones and growth of Shambu Blood Bank since establishment by Oromia Health Bureau.
           </p>
         </div>
 
@@ -65,9 +60,9 @@ export function ImpactTimeline() {
                       {/* Mobile line connecting to top */}
                       <div className="absolute left-6 top-0 bottom-full w-px bg-border/60 md:hidden" />
                       
-                      <div className="text-primary font-display font-bold text-2xl mb-2">{event.year}</div>
+                      <div className="text-primary font-display font-bold text-xl mb-2">{event.year}</div>
                       <h4 className="text-xl font-semibold mb-2">{event.title}</h4>
-                      <p className="text-muted-foreground">{event.description}</p>
+                      <p className="text-muted-foreground text-sm leading-relaxed">{event.description}</p>
                     </div>
                   </motion.div>
                 </div>
