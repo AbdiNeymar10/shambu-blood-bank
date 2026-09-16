@@ -30,7 +30,7 @@ export function CtaBanner() {
 
             <motion.div initial="hidden" whileInView="visible" viewport={viewportOnce} variants={fadeInUp} className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto shrink-0">
               <Button size="lg" asChild className="h-13 px-8 text-base bg-white text-red-600 hover:bg-red-50 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95">
-                <Link href="/become-a-donor">
+                <Link href="/donate">
                   Become a Donor
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Link>
