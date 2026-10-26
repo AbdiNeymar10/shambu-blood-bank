@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { 
-  Newspaper, 
-  Plus, 
-  Calendar, 
-  User, 
-  Eye, 
-  Edit3, 
-  CheckCircle2, 
+import {
+  Newspaper,
+  Plus,
+  Calendar,
+  User,
+  Eye,
+  Edit3,
+  CheckCircle2,
   Clock,
   Loader2,
   X,
@@ -20,12 +20,12 @@ import {
   Star,
   Trash2
 } from "lucide-react";
-import { 
-  getAdminArticlesData, 
-  createAdminArticle, 
+import {
+  getAdminArticlesData,
+  createAdminArticle,
   updateAdminArticle,
   uploadArticleImage,
-  type AdminArticleItem 
+  type AdminArticleItem
 } from "@/lib/actions/articles";
 import { cn } from "@/lib/utils";
 
@@ -332,8 +332,8 @@ export default function AdminBlogPage() {
       article.images && article.images.length > 0
         ? article.images
         : article.coverImageUrl
-        ? [article.coverImageUrl]
-        : [PRESET_IMAGES[0].url];
+          ? [article.coverImageUrl]
+          : [PRESET_IMAGES[0].url];
 
     setEditForm({
       title: article.title,
@@ -385,7 +385,7 @@ export default function AdminBlogPage() {
     return (
       <div className="space-y-4 p-4 bg-secondary/30 rounded-2xl border border-border">
         {/* Hidden File Input */}
-        <input 
+        <input
           type="file"
           ref={fileInputRef}
           accept="image/*"
@@ -484,7 +484,7 @@ export default function AdminBlogPage() {
                     className="w-full h-9 pl-8 pr-2 rounded-lg border border-input bg-background text-xs outline-none focus:ring-1 focus:ring-primary truncate"
                   />
                 </div>
-                
+
                 {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0">
                   {idx > 0 && (
@@ -544,7 +544,7 @@ export default function AdminBlogPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground font-display">Blog & Educational Content</h1>
           <p className="text-muted-foreground font-medium">Publish educational articles, health awareness guides, and community announcements.</p>
         </div>
-        <button 
+        <button
           onClick={handleOpenCreateModal}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-semibold text-sm rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all self-start sm:self-auto"
         >
@@ -593,10 +593,10 @@ export default function AdminBlogPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {article.coverImageUrl ? (
-                          <img 
-                            src={article.coverImageUrl} 
+                          <img
+                            src={article.coverImageUrl}
                             alt={article.title}
-                            className="w-10 h-10 rounded-lg object-cover border border-border shrink-0" 
+                            className="w-10 h-10 rounded-lg object-cover border border-border shrink-0"
                           />
                         ) : (
                           <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground shrink-0">
@@ -636,14 +636,14 @@ export default function AdminBlogPage() {
                       <span className={cn(
                         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold",
                         article.status === "Published" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
-                        "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                          "bg-amber-500/10 text-amber-600 dark:text-amber-400"
                       )}>
                         {article.status === "Published" ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
                         {article.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button 
+                      <button
                         onClick={() => handleOpenEditModal(article)}
                         className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1"
                       >
@@ -664,7 +664,7 @@ export default function AdminBlogPage() {
           <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl w-full max-w-xl space-y-5 relative max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border pb-4">
               <h3 className="text-xl font-bold text-foreground">Create New Article</h3>
-              <button 
+              <button
                 onClick={() => setIsCreateModalOpen(false)}
                 className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground"
               >
@@ -682,7 +682,7 @@ export default function AdminBlogPage() {
             <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Article Title</label>
-                <input 
+                <input
                   type="text"
                   value={createForm.title}
                   onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
@@ -697,7 +697,7 @@ export default function AdminBlogPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Category</label>
-                  <select 
+                  <select
                     value={createForm.category}
                     onChange={(e) => setCreateForm({ ...createForm, category: e.target.value })}
                     className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
@@ -709,7 +709,7 @@ export default function AdminBlogPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Publication Status</label>
-                  <select 
+                  <select
                     value={createForm.status}
                     onChange={(e) => setCreateForm({ ...createForm, status: e.target.value as "Published" | "Draft" })}
                     className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
@@ -722,7 +722,7 @@ export default function AdminBlogPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Summary / Excerpt</label>
-                <input 
+                <input
                   type="text"
                   value={createForm.excerpt}
                   onChange={(e) => setCreateForm({ ...createForm, excerpt: e.target.value })}
@@ -733,7 +733,7 @@ export default function AdminBlogPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Article Content</label>
-                <textarea 
+                <textarea
                   rows={4}
                   value={createForm.content}
                   onChange={(e) => setCreateForm({ ...createForm, content: e.target.value })}
@@ -770,7 +770,7 @@ export default function AdminBlogPage() {
           <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl w-full max-w-xl space-y-5 relative max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border pb-4">
               <h3 className="text-xl font-bold text-foreground">Edit Article</h3>
-              <button 
+              <button
                 onClick={() => setEditingArticle(null)}
                 className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground"
               >
@@ -788,7 +788,7 @@ export default function AdminBlogPage() {
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Article Title</label>
-                <input 
+                <input
                   type="text"
                   value={editForm.title}
                   onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
@@ -802,7 +802,7 @@ export default function AdminBlogPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Category</label>
-                  <select 
+                  <select
                     value={editForm.category}
                     onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
                     className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
@@ -814,7 +814,7 @@ export default function AdminBlogPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Publication Status</label>
-                  <select 
+                  <select
                     value={editForm.status}
                     onChange={(e) => setEditForm({ ...editForm, status: e.target.value as "Published" | "Draft" })}
                     className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
@@ -827,7 +827,7 @@ export default function AdminBlogPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Summary / Excerpt</label>
-                <input 
+                <input
                   type="text"
                   value={editForm.excerpt}
                   onChange={(e) => setEditForm({ ...editForm, excerpt: e.target.value })}
@@ -837,7 +837,7 @@ export default function AdminBlogPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Article Content</label>
-                <textarea 
+                <textarea
                   rows={4}
                   value={editForm.content}
                   onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}

@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Calendar as CalendarIcon, 
-  Clock, 
-  CheckCircle2, 
-  Plus, 
-  Hospital, 
+import {
+  Calendar as CalendarIcon,
+  Clock,
+  CheckCircle2,
+  Plus,
+  Hospital,
   Phone,
   Loader2,
   X,
@@ -16,10 +16,10 @@ import {
   UserX,
   Check
 } from "lucide-react";
-import { 
-  getAdminAppointmentsData, 
+import {
+  getAdminAppointmentsData,
   updateAppointmentStatus,
-  bookAdminAppointment, 
+  bookAdminAppointment,
   getBookingOptions,
   type AdminAppointmentsData,
   type AppointmentStatus
@@ -199,7 +199,7 @@ export default function AdminAppointmentsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground font-display">Donation Appointments</h1>
           <p className="text-muted-foreground font-medium">Manage scheduled donor appointments, verify bookings, and process completions.</p>
         </div>
-        <button 
+        <button
           onClick={handleOpenBookingModal}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-semibold text-sm rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all self-start sm:self-auto"
         >
@@ -303,11 +303,11 @@ export default function AdminAppointmentsPage() {
                         <span className={cn(
                           "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border",
                           raw === "confirmed" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" :
-                          raw === "checked_in" ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20" :
-                          raw === "completed" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" :
-                          raw === "cancelled" ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20" :
-                          raw === "no_show" ? "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20" :
-                          "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" // Scheduled
+                            raw === "checked_in" ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20" :
+                              raw === "completed" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" :
+                                raw === "cancelled" ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20" :
+                                  raw === "no_show" ? "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20" :
+                                    "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" // Scheduled
                         )}>
                           {apt.status}
                         </span>
@@ -467,8 +467,8 @@ export default function AdminAppointmentsPage() {
                 className={cn(
                   "px-5 py-2 rounded-xl text-sm font-semibold shadow-md hover:scale-[1.02] active:scale-95 transition-all text-white",
                   confirmModal.targetStatus === "completed" ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20" :
-                  confirmModal.targetStatus === "cancelled" ? "bg-rose-600 hover:bg-rose-700 shadow-rose-600/20" :
-                  "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20"
+                    confirmModal.targetStatus === "cancelled" ? "bg-rose-600 hover:bg-rose-700 shadow-rose-600/20" :
+                      "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20"
                 )}
               >
                 {confirmModal.confirmLabel}
@@ -484,7 +484,7 @@ export default function AdminAppointmentsPage() {
           <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl w-full max-w-lg space-y-6 relative">
             <div className="flex items-center justify-between border-b border-border pb-4">
               <h3 className="text-xl font-bold text-foreground">Book Donor Appointment</h3>
-              <button 
+              <button
                 onClick={() => setIsBookingOpen(false)}
                 className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground"
               >
@@ -505,7 +505,7 @@ export default function AdminAppointmentsPage() {
                 {bookingDonors.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic">No registered donors found.</p>
                 ) : (
-                  <select 
+                  <select
                     value={bookingForm.donorId}
                     onChange={(e) => setBookingForm({ ...bookingForm, donorId: e.target.value })}
                     className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
@@ -524,7 +524,7 @@ export default function AdminAppointmentsPage() {
                 {bookingHospitals.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic">No hospital locations found.</p>
                 ) : (
-                  <select 
+                  <select
                     value={bookingForm.hospitalId}
                     onChange={(e) => setBookingForm({ ...bookingForm, hospitalId: e.target.value })}
                     className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
@@ -541,7 +541,7 @@ export default function AdminAppointmentsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Appointment Date</label>
-                  <input 
+                  <input
                     type="date"
                     value={bookingForm.date}
                     onChange={(e) => setBookingForm({ ...bookingForm, date: e.target.value })}
@@ -550,7 +550,7 @@ export default function AdminAppointmentsPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Appointment Time</label>
-                  <input 
+                  <input
                     type="time"
                     value={bookingForm.time}
                     onChange={(e) => setBookingForm({ ...bookingForm, time: e.target.value })}
@@ -561,7 +561,7 @@ export default function AdminAppointmentsPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Notes (Optional)</label>
-                <input 
+                <input
                   type="text"
                   value={bookingForm.notes}
                   onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })}

@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  FileText, 
-  Search, 
-  Clock, 
-  CheckCircle2, 
-  AlertCircle, 
-  Hospital, 
+import {
+  FileText,
+  Search,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Hospital,
   Loader2,
   X,
   AlertTriangle,
@@ -15,9 +15,9 @@ import {
   Check,
   XCircle
 } from "lucide-react";
-import { 
-  getAdminBloodRequestsData, 
-  updateBloodRequestStatus, 
+import {
+  getAdminBloodRequestsData,
+  updateBloodRequestStatus,
   allocateBloodUnits,
   getInventoryStockForBloodGroup,
   type AdminBloodRequestsData,
@@ -256,8 +256,8 @@ export default function AdminBloodRequestsPage() {
                       <span className={cn(
                         "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold",
                         req.priority === "Emergency" || req.priority === "Critical" ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" :
-                        req.priority === "Urgent" || req.priority === "High" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" :
-                        "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                          req.priority === "Urgent" || req.priority === "High" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" :
+                            "bg-blue-500/10 text-blue-600 dark:text-blue-400"
                       )}>
                         {req.priority}
                       </span>
@@ -269,15 +269,15 @@ export default function AdminBloodRequestsPage() {
                       <span className={cn(
                         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold",
                         req.status === "Approved" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" :
-                        req.status === "Pending" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" :
-                        req.status === "Fulfilled" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
-                        "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                          req.status === "Pending" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" :
+                            req.status === "Fulfilled" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
+                              "bg-rose-500/10 text-rose-600 dark:text-rose-400"
                       )}>
                         {req.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button 
+                      <button
                         onClick={() => handleOpenDispatch(req)}
                         className="text-xs font-bold text-primary hover:underline"
                       >
@@ -301,7 +301,7 @@ export default function AdminBloodRequestsPage() {
                 <h3 className="text-xl font-bold text-foreground">Manage Dispatch</h3>
                 <p className="text-xs font-mono text-muted-foreground mt-0.5">{selectedRequest.requestNumber}</p>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedRequest(null)}
                 className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground"
               >
@@ -336,8 +336,8 @@ export default function AdminBloodRequestsPage() {
                 <span className={cn(
                   "font-semibold",
                   selectedRequest.priority === "Emergency" || selectedRequest.priority === "Critical" ? "text-rose-600 dark:text-rose-400" :
-                  selectedRequest.priority === "Urgent" || selectedRequest.priority === "High" ? "text-amber-600 dark:text-amber-400" :
-                  "text-blue-600 dark:text-blue-400"
+                    selectedRequest.priority === "Urgent" || selectedRequest.priority === "High" ? "text-amber-600 dark:text-amber-400" :
+                      "text-blue-600 dark:text-blue-400"
                 )}>{selectedRequest.priority}</span>
               </div>
               <div>
@@ -386,7 +386,7 @@ export default function AdminBloodRequestsPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Allocate Units from Inventory</label>
                   <div className="flex items-center gap-3">
-                    <input 
+                    <input
                       type="number"
                       min="1"
                       max={Math.max(1, selectedRequest.unitsNeeded - selectedRequest.unitsFulfilled)}

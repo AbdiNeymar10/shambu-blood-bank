@@ -1,8 +1,8 @@
-import { 
-  Users, 
-  Droplet, 
-  FileText, 
-  TrendingUp, 
+import {
+  Users,
+  Droplet,
+  FileText,
+  TrendingUp,
   ArrowUpRight,
   MoreVertical,
   CheckCircle2,
@@ -28,35 +28,35 @@ export default async function AdminDashboardPage() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title="Total Registered Donors" 
-          value={stats.totalDonors} 
-          icon={Users} 
-          trend="Registered Donors" 
+        <StatCard
+          title="Total Registered Donors"
+          value={stats.totalDonors}
+          icon={Users}
+          trend="Registered Donors"
           trendType="up"
           color="blue"
         />
-        <StatCard 
-          title="Pending Requests" 
-          value={stats.pendingRequests} 
-          icon={FileText} 
-          trend="Awaiting fulfillment" 
+        <StatCard
+          title="Pending Requests"
+          value={stats.pendingRequests}
+          icon={FileText}
+          trend="Awaiting fulfillment"
           trendType="neutral"
           color="orange"
         />
-        <StatCard 
-          title="Available Blood Units" 
-          value={stats.availableBloodUnits} 
-          icon={Droplet} 
-          trend="Units in inventory" 
+        <StatCard
+          title="Available Blood Units"
+          value={stats.availableBloodUnits}
+          icon={Droplet}
+          trend="Units in inventory"
           trendType="neutral"
           color="red"
         />
-        <StatCard 
-          title="Active Campaigns" 
-          value={stats.activeCampaigns} 
-          icon={TrendingUp} 
-          trend="Active blood drives" 
+        <StatCard
+          title="Active Campaigns"
+          value={stats.activeCampaigns}
+          icon={TrendingUp}
+          trend="Active blood drives"
           trendType="up"
           color="green"
         />
@@ -120,8 +120,8 @@ export default async function AdminDashboardPage() {
                           <span className={cn(
                             "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold",
                             request.priority === "Critical" || request.priority === "Emergency" ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" :
-                            request.priority === "Urgent" || request.priority === "High" ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400" :
-                            "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
+                              request.priority === "Urgent" || request.priority === "High" ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400" :
+                                "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
                           )}>
                             {request.priority}
                           </span>
@@ -187,8 +187,8 @@ export default async function AdminDashboardPage() {
                   <div className="text-xs text-muted-foreground">Monthly Growth</div>
                   <div className={cn(
                     "text-sm font-bold",
-                    monthlyGrowth.startsWith("-") 
-                      ? "text-red-700 dark:text-red-400" 
+                    monthlyGrowth.startsWith("-")
+                      ? "text-red-700 dark:text-red-400"
                       : "text-green-700 dark:text-green-400"
                   )}>
                     {monthlyGrowth}
@@ -220,9 +220,9 @@ function StatCard({ title, value, icon: Icon, trend, trendType, color }: any) {
         </div>
         <div className={cn(
           "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
-          trendType === "up" ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" : 
-          trendType === "down" ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" : 
-          "bg-secondary text-muted-foreground"
+          trendType === "up" ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" :
+            trendType === "down" ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" :
+              "bg-secondary text-muted-foreground"
         )}>
           {trendType === "up" ? "↑" : trendType === "down" ? "↓" : "•"} {trend.split(' ')[0]}
         </div>

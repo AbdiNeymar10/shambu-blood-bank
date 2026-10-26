@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { 
-  History, 
-  Download, 
-  CheckCircle2, 
+import {
+  History,
+  Download,
+  CheckCircle2,
   Clock,
   XCircle,
   AlertTriangle,
-  Hospital, 
+  Hospital,
   Calendar,
   Loader2,
   Inbox,

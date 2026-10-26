@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Users, 
-  Search, 
-  Filter, 
-  UserCheck, 
-  UserX, 
-  Mail, 
-  Phone, 
-  MapPin, 
+import {
+  Users,
+  Search,
+  Filter,
+  UserCheck,
+  UserX,
+  Mail,
+  Phone,
+  MapPin,
   Droplet,
   Plus,
   CheckCircle2,
@@ -19,9 +19,9 @@ import {
   AlertTriangle,
   FileText
 } from "lucide-react";
-import { 
-  getAdminDonorsData, 
-  registerAdminDonor, 
+import {
+  getAdminDonorsData,
+  registerAdminDonor,
   getDonorProfileDetails,
   type AdminDonorsData,
   type DonorTableItem,
@@ -123,7 +123,7 @@ export default function AdminDonorsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground font-display">Donor Management</h1>
           <p className="text-muted-foreground font-medium">Manage registered blood donors, check eligibility, and contact volunteers.</p>
         </div>
-        <button 
+        <button
           onClick={handleOpenRegisterModal}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-semibold text-sm rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all self-start sm:self-auto"
         >
@@ -172,7 +172,7 @@ export default function AdminDonorsPage() {
       <div className="bg-card border border-border p-4 rounded-2xl flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input 
+          <input
             type="text"
             placeholder="Search by name, phone or email..."
             value={searchTerm}
@@ -189,7 +189,7 @@ export default function AdminDonorsPage() {
               onClick={() => setSelectedGroup(group)}
               className={cn(
                 "px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0",
-                selectedGroup === group 
+                selectedGroup === group
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "bg-secondary text-muted-foreground hover:text-foreground"
               )}
@@ -251,8 +251,8 @@ export default function AdminDonorsPage() {
                       <span className={cn(
                         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold",
                         donor.status === "Available" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
-                        donor.status === "Deferred" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" :
-                        "bg-secondary text-muted-foreground"
+                          donor.status === "Deferred" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" :
+                            "bg-secondary text-muted-foreground"
                       )}>
                         <CheckCircle2 className="w-3.5 h-3.5" /> {donor.status}
                       </span>
@@ -264,7 +264,7 @@ export default function AdminDonorsPage() {
                       <span className="inline-flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {donor.lastDonated}</span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button 
+                      <button
                         onClick={() => handleViewProfile(donor.id)}
                         className="text-xs font-bold text-primary hover:underline"
                       >
@@ -285,7 +285,7 @@ export default function AdminDonorsPage() {
           <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl w-full max-w-lg space-y-6 relative">
             <div className="flex items-center justify-between border-b border-border pb-4">
               <h3 className="text-xl font-bold text-foreground">Register New Donor</h3>
-              <button 
+              <button
                 onClick={() => setIsRegisterModalOpen(false)}
                 className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground"
               >
@@ -303,7 +303,7 @@ export default function AdminDonorsPage() {
             <form onSubmit={handleRegisterSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Full Name</label>
-                <input 
+                <input
                   type="text"
                   value={registerForm.fullName}
                   onChange={(e) => setRegisterForm({ ...registerForm, fullName: e.target.value })}
@@ -315,7 +315,7 @@ export default function AdminDonorsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Email Address</label>
-                  <input 
+                  <input
                     type="email"
                     value={registerForm.email}
                     onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
@@ -325,7 +325,7 @@ export default function AdminDonorsPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Phone Number</label>
-                  <input 
+                  <input
                     type="tel"
                     value={registerForm.phone}
                     onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })}
@@ -338,7 +338,7 @@ export default function AdminDonorsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Blood Group</label>
-                  <select 
+                  <select
                     value={registerForm.bloodGroup}
                     onChange={(e) => setRegisterForm({ ...registerForm, bloodGroup: e.target.value as BloodGroup })}
                     className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
@@ -350,7 +350,7 @@ export default function AdminDonorsPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">City / Location</label>
-                  <input 
+                  <input
                     type="text"
                     value={registerForm.city}
                     onChange={(e) => setRegisterForm({ ...registerForm, city: e.target.value })}
@@ -393,7 +393,7 @@ export default function AdminDonorsPage() {
                   <span>{selectedDonorProfile.donor.email}</span> • <span>{selectedDonorProfile.donor.phone}</span>
                 </p>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedDonorProfile(null)}
                 className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground"
               >
@@ -416,8 +416,8 @@ export default function AdminDonorsPage() {
                 <span className={cn(
                   "font-bold",
                   selectedDonorProfile.donor.status === "Available" ? "text-emerald-600 dark:text-emerald-400" :
-                  selectedDonorProfile.donor.status === "Deferred" ? "text-amber-600 dark:text-amber-400" :
-                  "text-muted-foreground"
+                    selectedDonorProfile.donor.status === "Deferred" ? "text-amber-600 dark:text-amber-400" :
+                      "text-muted-foreground"
                 )}>{selectedDonorProfile.donor.status}</span>
               </div>
               <div>

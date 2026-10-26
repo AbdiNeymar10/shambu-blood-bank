@@ -1,23 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Droplet, 
-  Plus, 
-  Calendar, 
-  ShieldAlert, 
-  TrendingDown, 
+import {
+  Droplet,
+  Plus,
+  Calendar,
+  ShieldAlert,
+  TrendingDown,
   TrendingUp,
   Hospital,
   AlertTriangle,
   Loader2,
   X
 } from "lucide-react";
-import { 
-  getAdminInventoryData, 
-  addInventoryBatch, 
+import {
+  getAdminInventoryData,
+  addInventoryBatch,
   getInventoryHospitalOptions,
-  type AdminInventoryData 
+  type AdminInventoryData
 } from "@/lib/actions/inventory";
 import type { BloodGroup, ComponentType } from "@/types/database.types";
 import { cn } from "@/lib/utils";
@@ -103,7 +103,7 @@ export default function AdminBloodInventoryPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground font-display">Blood Inventory Management</h1>
           <p className="text-muted-foreground font-medium">Monitor blood units, component reserves, expiry dates, and shortage alerts.</p>
         </div>
-        <button 
+        <button
           onClick={handleOpenAddModal}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-semibold text-sm rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all self-start sm:self-auto"
         >
@@ -221,9 +221,9 @@ export default function AdminBloodInventoryPage() {
                       <span className={cn(
                         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold",
                         item.status === "Adequate" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
-                        item.status === "Moderate" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" :
-                        item.status === "Low" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" :
-                        "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                          item.status === "Moderate" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" :
+                            item.status === "Low" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" :
+                              "bg-rose-500/10 text-rose-600 dark:text-rose-400"
                       )}>
                         {item.status}
                       </span>
@@ -242,7 +242,7 @@ export default function AdminBloodInventoryPage() {
           <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl w-full max-w-lg space-y-6 relative">
             <div className="flex items-center justify-between border-b border-border pb-4">
               <h3 className="text-xl font-bold text-foreground">Add Inventory Batch</h3>
-              <button 
+              <button
                 onClick={() => setIsAddModalOpen(false)}
                 className="p-2 hover:bg-secondary rounded-lg transition-colors text-muted-foreground"
               >
@@ -263,7 +263,7 @@ export default function AdminBloodInventoryPage() {
                 {hospitals.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic">No hospitals found.</p>
                 ) : (
-                  <select 
+                  <select
                     value={addForm.hospitalId}
                     onChange={(e) => setAddForm({ ...addForm, hospitalId: e.target.value })}
                     className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
@@ -280,7 +280,7 @@ export default function AdminBloodInventoryPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Blood Group</label>
-                  <select 
+                  <select
                     value={addForm.bloodGroup}
                     onChange={(e) => setAddForm({ ...addForm, bloodGroup: e.target.value as BloodGroup })}
                     className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
@@ -292,7 +292,7 @@ export default function AdminBloodInventoryPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Component Type</label>
-                  <select 
+                  <select
                     value={addForm.componentType}
                     onChange={(e) => setAddForm({ ...addForm, componentType: e.target.value as ComponentType })}
                     className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-primary"
@@ -308,7 +308,7 @@ export default function AdminBloodInventoryPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Units to Add</label>
-                <input 
+                <input
                   type="number"
                   min="1"
                   value={addForm.unitsAvailable}

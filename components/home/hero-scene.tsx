@@ -7,7 +7,7 @@ import * as THREE from "three";
 
 function Particles() {
   const ref = useRef<THREE.Points>(null);
-  
+
   const particles = useMemo(() => {
     const arr = new Float32Array(300 * 3);
     for (let i = 0; i < 300; i++) {
@@ -41,7 +41,7 @@ function Particles() {
 
 function BloodDrop({ position, scale, color, speed = 2 }: { position: [number, number, number], scale: number, color: string, speed?: number }) {
   const meshRef = useRef<THREE.Mesh>(null);
-  
+
   useFrame((state) => {
     if (meshRef.current) {
       meshRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5 * speed) * 0.2;
@@ -53,8 +53,8 @@ function BloodDrop({ position, scale, color, speed = 2 }: { position: [number, n
     <Float speed={speed} rotationIntensity={1.5} floatIntensity={2} position={position}>
       <mesh ref={meshRef} scale={scale}>
         <sphereGeometry args={[1, 32, 32]} />
-        <meshStandardMaterial 
-          color={color} 
+        <meshStandardMaterial
+          color={color}
           roughness={0.2}
           metalness={0.1}
           envMapIntensity={1}
@@ -78,9 +78,9 @@ function Scene() {
       <ambientLight intensity={0.5} />
       <directionalLight position={[10, 10, 5]} intensity={1} color="#ffb3b3" />
       <pointLight position={[-10, -10, -5]} intensity={2} color="#ff1a1a" />
-      
+
       <Particles />
-      
+
       <BloodDrop position={[-3, 1, -2]} scale={0.8} color="#ef4444" speed={1.5} />
       <BloodDrop position={[4, -1, -3]} scale={1.2} color="#dc2626" speed={2} />
       <BloodDrop position={[2, 3, -5]} scale={0.6} color="#b91c1c" speed={1.8} />

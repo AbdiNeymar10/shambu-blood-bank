@@ -1,26 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { 
-  BarChart as BarChartIcon, 
-  Download, 
-  TrendingUp, 
-  Droplet, 
-  Users, 
-  Calendar, 
-  FileCheck 
+import {
+  BarChart as BarChartIcon,
+  Download,
+  TrendingUp,
+  Droplet,
+  Users,
+  Calendar,
+  FileCheck
 } from "lucide-react";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  PieChart, 
-  Pie, 
-  Cell 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell
 } from "recharts";
 import { getAdminReportsData, type AdminReportsData } from "@/lib/actions/reports";
 
@@ -49,7 +49,7 @@ export default function AdminReportsPage() {
     csvRows.push("Shambu Blood Bank - Analytics & Reports Export");
     csvRows.push(`Export Date,${todayStr}`);
     csvRows.push("");
-    
+
     csvRows.push("KEY PERFORMANCE INDICATORS");
     csvRows.push("Metric,Value,Description");
     csvRows.push(`Fulfillment Rate,${data.fulfillmentRate},"${data.fulfillmentSubtext}"`);
@@ -96,7 +96,7 @@ export default function AdminReportsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground font-display">Analytics & Reports</h1>
           <p className="text-muted-foreground font-medium">Export monthly donation statistics, blood request fulfillment rates, and audit logs.</p>
         </div>
-        <button 
+        <button
           onClick={handleExportCSV}
           disabled={loading || !data}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-semibold text-sm rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all self-start sm:self-auto disabled:opacity-50 disabled:cursor-not-allowed"

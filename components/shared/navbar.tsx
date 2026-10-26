@@ -66,7 +66,7 @@ export function Navbar({
       className={cn(
         "sticky top-0 z-50 border-b border-transparent transition-all duration-300",
         scrolled &&
-          "border-border/60 bg-background/70 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.15)] backdrop-blur-xl",
+        "border-border/60 bg-background/70 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.15)] backdrop-blur-xl",
         className
       )}
     >
@@ -157,7 +157,7 @@ export function Navbar({
                     className={cn(
                       "rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
                       isActive(link.href) &&
-                        "bg-primary/5 text-foreground border-l-2 border-primary"
+                      "bg-primary/5 text-foreground border-l-2 border-primary"
                     )}
                   >
                     {link.label}

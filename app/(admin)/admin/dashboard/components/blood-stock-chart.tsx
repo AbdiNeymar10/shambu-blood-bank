@@ -1,12 +1,12 @@
 "use client";
 
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   Cell
 } from "recharts";
@@ -22,21 +22,21 @@ export function BloodStockChart({ data }: BloodStockChartProps) {
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-        <XAxis 
-          dataKey="group" 
-          axisLine={false} 
-          tickLine={false} 
+        <XAxis
+          dataKey="group"
+          axisLine={false}
+          tickLine={false}
           tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12, fontWeight: 500 }}
         />
-        <YAxis 
-          axisLine={false} 
-          tickLine={false} 
+        <YAxis
+          axisLine={false}
+          tickLine={false}
           tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12, fontWeight: 500 }}
         />
-        <Tooltip 
+        <Tooltip
           cursor={{ fill: 'hsl(var(--secondary))', opacity: 0.4 }}
-          contentStyle={{ 
-            backgroundColor: 'hsl(var(--card))', 
+          contentStyle={{
+            backgroundColor: 'hsl(var(--card))',
             borderColor: 'hsl(var(--border))',
             borderRadius: '12px',
             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
